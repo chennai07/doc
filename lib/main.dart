@@ -17,14 +17,15 @@ class MyApp extends StatelessWidget {
       title: 'Doctor App',
       theme: ThemeData(primarySwatch: Colors.blue),
 
-      // ✅ The first screen when app opens
+      // ✅ First screen when app opens
       home: const LoginScreen(),
 
-      // ✅ Register named routes here
+      // ✅ Named routes
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/createProfile': (context) => const ProfessionalProfilePage(),
-        '/doctorProfile': (context) => const DoctorProfilePage(),
+        '/createProfile': (context) => const ProfessionalProfileFormPage(),
+        '/doctorProfile': (context) =>
+            const DoctorProfilePage(), // works after fix
       },
     );
   }

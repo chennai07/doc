@@ -5,10 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// ✅ Import your Professional Profile Page
-
-// ↑ Replace the above path with your actual file path if different
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -76,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const ProfessionalProfilePage(),
+            builder: (context) => const ProfessionalProfileFormPage(),
           ),
         );
       } else {

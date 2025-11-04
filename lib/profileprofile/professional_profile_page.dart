@@ -7,15 +7,16 @@ import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ProfessionalProfilePage extends StatefulWidget {
-  const ProfessionalProfilePage({super.key});
+class ProfessionalProfileFormPage extends StatefulWidget {
+  const ProfessionalProfileFormPage({super.key});
 
   @override
-  State<ProfessionalProfilePage> createState() =>
-      _ProfessionalProfilePageState();
+  State<ProfessionalProfileFormPage> createState() =>
+      _ProfessionalProfileFormPageState();
 }
 
-class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
+class _ProfessionalProfileFormPageState
+    extends State<ProfessionalProfileFormPage> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController fullNameController = TextEditingController();
@@ -35,7 +36,6 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
   File? _cvFile;
   bool _isLoading = false;
 
-  // ✅ Image picker
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -43,7 +43,6 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
     if (pickedFile != null) setState(() => _image = File(pickedFile.path));
   }
 
-  // ✅ CV picker
   Future<void> _pickCV() async {
     final pickedFile = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -51,7 +50,6 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
     if (pickedFile != null) setState(() => _cvFile = File(pickedFile.path));
   }
 
-  // ✅ Date picker (ensures valid YYYY-MM-DD format)
   Future<void> _selectDate(TextEditingController controller) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -65,7 +63,6 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
     }
   }
 
-  // ✅ Submit Profile
   Future<void> _submitProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -81,7 +78,7 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
       subSpeciality: subSpecialityController.text.trim(),
       summaryProfile: summaryController.text.trim(),
       termsAccepted: true,
-      profileId: "6901b118dcca2b9cc4636e9d", // ✅ use your real profile ID
+      profileId: "6901b118dcca2b9cc4636e9d",
       portfolioLinks: "linkkk",
       workExperience: [
         {
@@ -110,7 +107,6 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
           SnackBar(content: Text('✅ Profile Created: $newProfileId')),
         );
 
-        // ✅ Navigate to DoctorProfilePage immediately
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -131,7 +127,6 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
     }
   }
 
-  // ✅ Build UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -165,33 +160,14 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
                   "Location",
                   locationController,
                 ),
-
                 const SizedBox(height: 20),
+
                 _buildLabel("Your Profile Picture"),
                 GestureDetector(
                   onTap: _pickImage,
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black26),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 15),
-                          child: Text(
-                            "Upload your image",
-                            style: TextStyle(color: Colors.black45),
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.only(right: 15),
-                          child: Icon(Iconsax.export, color: Colors.black45),
-                        ),
-                      ],
-                    ),
+                  child: _filePickerContainer(
+                    "Upload your image",
+                    Iconsax.export,
                   ),
                 ),
                 if (_image != null)
@@ -240,35 +216,13 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
                 _buildLabel("Upload CV (PDF)"),
                 GestureDetector(
                   onTap: _pickCV,
-                  child: Container(
-                    height: 50,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black26),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 15),
-                          child: Text(
-                            "Upload your CV",
-                            style: TextStyle(color: Colors.black45),
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.only(right: 15),
-                          child: Icon(
-                            Iconsax.document_upload,
-                            color: Colors.black45,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: _filePickerContainer(
+                    "Upload your CV",
+                    Iconsax.document_upload,
                   ),
                 ),
-                const SizedBox(height: 30),
 
+                const SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
                   height: 55,
@@ -332,6 +286,27 @@ class _ProfessionalProfilePageState extends State<ProfessionalProfilePage> {
     child: Text(
       label,
       style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+    ),
+  );
+
+  Widget _filePickerContainer(String text, IconData icon) => Container(
+    height: 50,
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.black26),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          child: Text(text, style: const TextStyle(color: Colors.black45)),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(right: 15),
+          child: Icon(icon, color: Colors.black45),
+        ),
+      ],
     ),
   );
 
