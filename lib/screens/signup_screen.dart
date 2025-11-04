@@ -76,7 +76,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const SignInScreen()),
+            MaterialPageRoute(builder: (context) => LoginScreen()),
           );
         });
       } else {
@@ -285,7 +285,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const SignInScreen(),
+                            builder: (context) => const LoginScreen(),
                           ),
                         );
                       },

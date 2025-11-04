@@ -1,122 +1,246 @@
-import 'dart:convert';
-import 'dart:io';
+import 'dart:convert'; // ✅ For JSON encoding/decoding
+import 'package:doc/profileprofile/professional_profile_page.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:iconsax/iconsax.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class ApiService {
-  static const String baseUrl =
-      'https://surgeon-search.onrender.com/api/sugeon'; // ✅ Make sure 'sugeon' is correct, not 'surgeon'
+// ✅ Import your Professional Profile Page
 
-  /// Create or Update Profile API
-  static Future<bool> createProfile(
-    Map<String, String> data,
-    File? imageFile,
-  ) async {
-    try {
-      final uri = Uri.parse('$baseUrl/create-profile');
-      final request = http.MultipartRequest('POST', uri);
+// ↑ Replace the above path with your actual file path if different
 
-      // ✅ Add form fields
-      data.forEach((key, value) {
-        if (value.isNotEmpty) request.fields[key] = value;
-      });
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
-      // ✅ Add image if present
-      if (imageFile != null) {
-        final file = await http.MultipartFile.fromPath(
-          'profileImage',
-          imageFile.path,
-        );
-        request.files.add(file);
-      }
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
 
-      // ✅ Add headers
-      request.headers.addAll({
-        'Accept': 'application/json',
-        // If authorization is required, uncomment next line:
-        // 'Authorization': 'Bearer YOUR_TOKEN',
-      });
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscureText = true;
+  bool _isLoading = false;
 
-      // ✅ Send request
-      final response = await request.send();
+  // ✅ API CALL FUNCTION
+  Future<void> _signIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-      // ✅ Convert stream to text
-      final responseBody = await response.stream.bytesToString();
-      print('🔹 API Response Status: ${response.statusCode}');
-      print('🔹 Response Body: $responseBody');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ Profile Created/Updated Successfully');
-        return true;
-      } else {
-        final decoded = jsonDecode(responseBody);
-        print(
-          '❌ API Error: ${decoded['message'] ?? decoded['error'] ?? 'Unknown error'}',
-        );
-        return false;
-      }
-    } catch (e) {
-      print('⚠️ Exception while uploading profile: $e');
-      return false;
-    }
-  }
-
-  /// Fetch a profile by ID
-  static Future<Map<String, dynamic>?> getProfile(String profileId) async {
-    try {
-      final uri = Uri.parse('$baseUrl/get-profile/$profileId');
-      final response = await http.get(
-        uri,
-        headers: {'Accept': 'application/json'},
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
       );
+      return;
+    }
 
-      print('🔹 GET Status: ${response.statusCode}');
-      print('🔹 GET Response: ${response.body}');
+    setState(() => _isLoading = true);
+
+    final url = Uri.parse('https://surgeon-search.onrender.com/api/signin');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data;
+        print('✅ Login Response: $data');
+
+        // ✅ Extract token and profile/user id
+        final token = data['token'];
+        final userData = data['user'] ?? data['profile'] ?? data;
+        final profileId = userData['_id'] ?? userData['profile_id'];
+
+        if (profileId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('profile_id', profileId.toString());
+          print('✅ Saved profile_id: $profileId');
+        } else {
+          print('⚠️ No profile_id found in response.');
+        }
+
+        if (token != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', token.toString());
+          print('🔑 Token saved: $token');
+        }
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('✅ Login Successful!')));
+
+        // ✅ Navigate to ProfessionalProfilePage
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProfessionalProfilePage(),
+          ),
+        );
       } else {
-        return null;
+        final error = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ ${error['message'] ?? 'Invalid credentials'}'),
+          ),
+        );
+        print('❌ Login failed: ${response.body}');
       }
     } catch (e) {
-      print('⚠️ Exception while fetching profile: $e');
-      return null;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      print('⚠️ Exception during login: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-  /// Update profile by ID (PUT)
-  static Future<bool> updateProfile(
-    String profileId,
-    Map<String, String> data,
-    File? imageFile,
-  ) async {
-    try {
-      final uri = Uri.parse('$baseUrl/update-profile/$profileId');
-      final request = http.MultipartRequest('PUT', uri);
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 10),
+              const Text.rich(
+                TextSpan(
+                  text: "Let’s ",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w400),
+                  children: [
+                    TextSpan(
+                      text: "Sign In",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 60),
 
-      data.forEach((key, value) {
-        if (value.isNotEmpty) request.fields[key] = value;
-      });
+              // ✅ Logo
+              Center(child: Image.asset('assets/logo2.png', height: 150)),
+              const SizedBox(height: 60),
 
-      if (imageFile != null) {
-        final file = await http.MultipartFile.fromPath(
-          'profileImage',
-          imageFile.path,
-        );
-        request.files.add(file);
-      }
+              // ✅ Email Field
+              TextField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Iconsax.sms, size: 20),
+                  hintText: 'Your email',
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.black12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
 
-      request.headers.addAll({'Accept': 'application/json'});
+              // ✅ Password Field
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscureText,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Iconsax.lock, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureText ? Iconsax.eye_slash : Iconsax.eye),
+                    onPressed: () {
+                      setState(() {
+                        _obscureText = !_obscureText;
+                      });
+                    },
+                  ),
+                  hintText: 'Your password',
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.black12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
 
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-      print('🔹 PUT Status: ${response.statusCode}');
-      print('🔹 PUT Body: $responseBody');
+              // ✅ Sign In Button
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFB3E5FC),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: _isLoading ? null : _signIn,
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Sign In',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 15),
 
-      return response.statusCode == 200 || response.statusCode == 201;
-    } catch (e) {
-      print('⚠️ Exception while updating profile: $e');
-      return false;
-    }
+              // ✅ Forgot password & Sign up
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () {},
+                    child: const Text(
+                      'Forgot password?',
+                      style: TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      const Text(
+                        "Don’t have an account?",
+                        style: TextStyle(color: Colors.black87, fontSize: 13),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          // TODO: Navigate to Sign Up Page
+                        },
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            color: Color(0xFF003366),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

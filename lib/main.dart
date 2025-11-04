@@ -1,5 +1,7 @@
-import 'package:doc/screens/splash_screen.dart';
+import 'package:doc/profileprofile/profile.dart';
+import 'package:doc/screens/signin_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:doc/profileprofile/professional_profile_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -8,9 +10,22 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: SplashScreen());
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Doctor App',
+      theme: ThemeData(primarySwatch: Colors.blue),
+
+      // ✅ The first screen when app opens
+      home: const LoginScreen(),
+
+      // ✅ Register named routes here
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/createProfile': (context) => const ProfessionalProfilePage(),
+        '/doctorProfile': (context) => const DoctorProfilePage(),
+      },
+    );
   }
 }
