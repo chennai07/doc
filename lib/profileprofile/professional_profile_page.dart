@@ -35,6 +35,21 @@ class _ProfessionalProfileFormPageState
   File? _image;
   File? _cvFile;
   bool _isLoading = false;
+  String? _profileId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileId();
+  }
+
+  Future<void> _loadProfileId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _profileId = prefs.getString('profile_id');
+    });
+    print('📁 Loaded profile ID: $_profileId');
+  }
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(
@@ -66,6 +81,13 @@ class _ProfessionalProfileFormPageState
   Future<void> _submitProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_profileId == null || _profileId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Profile ID not found. Please login again.')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     final result = await ApiService.createProfile(
@@ -78,7 +100,7 @@ class _ProfessionalProfileFormPageState
       subSpeciality: subSpecialityController.text.trim(),
       summaryProfile: summaryController.text.trim(),
       termsAccepted: true,
-      profileId: "690b081aaf8f7ab1f164407b",
+      profileId: _profileId!, // Use the profile ID from login
       portfolioLinks: "linkkk",
       workExperience: [
         {

@@ -79,4 +79,23 @@ class ApiService {
       return {'success': false, 'message': e.toString()};
     }
   }
+
+  /// Fetch profile information by ID
+  static Future<Map<String, dynamic>> fetchProfileInfo(String profileId) async {
+    try {
+      final url = Uri.parse('$baseUrl/profile-info/$profileId');
+      final response = await http.get(url);
+
+      print('📩 Fetch Profile Info Response (${response.statusCode}): ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': 'Failed to fetch profile info'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
 }

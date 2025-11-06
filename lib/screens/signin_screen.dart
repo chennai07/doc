@@ -21,6 +21,62 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true;
   bool _isLoading = false;
 
+  String? _extractProfileId(dynamic source) {
+    if (source == null) return null;
+
+    String? normalize(dynamic value) {
+      if (value == null) return null;
+      if (value is Map && value.containsKey(r'$oid')) {
+        final oidValue = value[r'$oid'];
+        final oidString = oidValue?.toString().trim();
+        if (oidString != null && oidString.isNotEmpty) return oidString;
+      }
+      final stringValue = value.toString().trim();
+      return stringValue.isEmpty ? null : stringValue;
+    }
+
+    final keysToCheck = const {
+      'profile_id',
+      'profileId',
+      'profileID',
+      '_id',
+      'id',
+      'user_id',
+      'userId',
+      'doctor_id',
+      'doctorId',
+    };
+
+    if (source is Map) {
+      for (final entry in source.entries) {
+        if (keysToCheck.contains(entry.key)) {
+          final normalized = normalize(entry.value);
+          if (normalized != null) return normalized;
+        }
+
+        if (entry.value is Map || entry.value is Iterable) {
+          final nested = _extractProfileId(entry.value);
+          if (nested != null) return nested;
+        } else {
+          final normalized = normalize(entry.value);
+          if (normalized != null && keysToCheck.any(entry.key.toLowerCase().contains)) {
+            return normalized;
+          }
+        }
+      }
+    } else if (source is Iterable) {
+      for (final item in source) {
+        final nested = _extractProfileId(item);
+        if (nested != null) return nested;
+      }
+    } else {
+      final normalized = normalize(source);
+      if (normalized != null) return normalized;
+    }
+
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -79,7 +135,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final token = data['token'];
         final userData = data['user'] ?? data['profile'] ?? data;
-        final profileId = userData['_id'] ?? userData['profile_id'];
+        final profileId = _extractProfileId(userData) ??
+            _extractProfileId(data['profile']) ??
+            _extractProfileId(data);
 
         // Generate unique local login ID (not sent to API)
         final newLoginId = uuid.v4();
@@ -87,7 +145,15 @@ class _LoginScreenState extends State<LoginScreen> {
         print('🆕 Generated local login ID: $newLoginId');
 
         // Save user info (shared helper)
-        await saveLoginInfo(profileId ?? '', token ?? '');
+        await saveLoginInfo(profileId, token?.toString() ?? '');
+
+        // Also save profileId specifically for use in profile forms
+        if (profileId != null) {
+          await prefs.setString('profile_id', profileId);
+          print('💾 Profile ID saved for profile forms: $profileId');
+        } else {
+          print('⚠️ No profile ID present in login response.');
+        }
 
         ScaffoldMessenger.of(
           context,
