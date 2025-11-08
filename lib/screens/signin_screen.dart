@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:doc/healthcare/hospial_form.dart';
+import 'package:doc/healthcare/hospital_profile.dart';
 import 'package:doc/profileprofile/surgeon_form.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -86,20 +87,20 @@ class _LoginScreenState extends State<LoginScreen> {
     _prewarmServer();
   }
 
-  /// 🌐 Wake up backend (Render) to prevent cold start delay
+  /// Wake up backend (Render) to prevent cold start delay
   Future<void> _prewarmServer() async {
     try {
       // Use root path which always exists and still wakes the instance
       await http
           .get(Uri.parse('https://surgeon-search.onrender.com/'))
           .timeout(const Duration(seconds: 8));
-      debugPrint('✅ Server is awake');
+      debugPrint(' Server is awake');
     } catch (_) {
-      debugPrint('⚠️ Could not prewarm server.');
+      debugPrint(' Could not prewarm server.');
     }
   }
 
-  /// 🔁 Helper: POST with retries/backoff to tolerate cold starts or transient TLS drops
+  /// Helper: POST with retries/backoff to tolerate cold starts or transient TLS drops
   Future<http.Response> _postWithRetry(
     Uri url, {
     Map<String, String>? headers,
@@ -131,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
     throw Exception('Request failed after retries');
   }
 
-  /// ✅ LOGIN FUNCTION
+  /// LOGIN FUNCTION
   Future<void> _signIn() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -198,12 +199,34 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final rl = (role ?? '').toLowerCase().trim();
         if (rl.contains('hospital') || rl.contains('health') || rl.contains('org')) {
-          // For hospital users, _id maps to healthcare_id
-          await SessionManager.saveHealthcareId(profileId);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: profileId)),
-          );
+          // Prefer previously saved healthcare_id; fallback to profileId for fetch only
+          final existingHid = await SessionManager.getHealthcareId();
+          final hid = (existingHid == null || existingHid.isEmpty) ? profileId : existingHid;
+          try {
+            final url = Uri.parse('https://surgeon-search.onrender.com/api/healthcare/healthcare-profile/$hid');
+            final resp = await http.get(url).timeout(const Duration(seconds: 15));
+            if (resp.statusCode == 200) {
+              final body = resp.body.trimLeft();
+              dynamic parsed;
+              try { parsed = jsonDecode(body); } catch (_) { parsed = {}; }
+              final payload = (parsed is Map && parsed['data'] != null) ? parsed['data'] : parsed;
+              final mapPayload = (payload is Map<String, dynamic>) ? payload : <String, dynamic>{};
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => HospitalProfile(data: mapPayload)),
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: profileId)),
+              );
+            }
+          } catch (_) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: profileId)),
+            );
+          }
         } else if (rl.contains('surgeon') || rl.contains('doctor')) {
           Navigator.pushReplacement(
             context,

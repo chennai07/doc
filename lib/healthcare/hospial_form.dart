@@ -8,6 +8,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:doc/model/api_service.dart';
 import 'package:doc/healthcare/hospital_profile.dart';
 import 'package:http/http.dart' as http;
+import 'package:doc/utils/session_manager.dart';
 
 class HospitalForm extends StatefulWidget {
   final String healthcareId;
@@ -128,39 +129,33 @@ Future<Map<String, dynamic>> _fetchHealthcareProfile(String healthcareId) async 
   }
 }
 
-class HospitalProfileView extends StatelessWidget {
-  final Map<String, dynamic> data;
-  const HospitalProfileView({super.key, required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final b = data;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Hospital Profile')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            Text('Name: ${b['hospitalName'] ?? ''}'),
-            const SizedBox(height: 8),
-            Text('Email: ${b['email'] ?? ''}'),
-            const SizedBox(height: 8),
-            Text('Phone: ${b['phoneNumber'] ?? ''}'),
-            const SizedBox(height: 8),
-            Text('Location: ${b['location'] ?? ''}'),
-            const SizedBox(height: 8),
-            Text('Type: ${b['hospitalType'] ?? ''}'),
-            const SizedBox(height: 8),
-            Text('Departments: ${(b['departmentsAvailable'] ?? []).toString()}'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _HospitalFormState extends State<HospitalForm> {
   final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _redirectIfProfileExists();
+  }
+
+  Future<void> _redirectIfProfileExists() async {
+    try {
+      final res = await _fetchHealthcareProfile(widget.healthcareId);
+      if (!mounted) return;
+      if (res['success'] == true) {
+        final payload = res['data'];
+        final normalized = (payload is Map<String, dynamic>)
+            ? (payload['data'] is Map<String, dynamic> ? payload['data'] : payload)
+            : <String, dynamic>{};
+        if (normalized.isNotEmpty) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => HospitalProfile(data: normalized)),
+          );
+        }
+      }
+    } catch (_) {}
+  }
 
   // Controllers
   final TextEditingController hospitalNameController = TextEditingController();
@@ -243,13 +238,32 @@ class _HospitalFormState extends State<HospitalForm> {
     );
 
     if (res['success'] == true) {
+      // Determine created healthcare profile id
+      final addPayload = res['data'];
+      String createdId = '';
+      if (addPayload is Map<String, dynamic>) {
+        final maybeData = addPayload['data'];
+        if (maybeData is Map<String, dynamic>) {
+          createdId = (maybeData['_id'] ?? maybeData['id'] ?? '').toString();
+        } else {
+          createdId = (addPayload['_id'] ?? addPayload['id'] ?? '').toString();
+        }
+      }
+      final targetId = (createdId.isNotEmpty) ? createdId : widget.healthcareId;
+      if (createdId.isNotEmpty) {
+        await SessionManager.saveHealthcareId(createdId);
+      }
       // Fetch profile and show
-      final prof = await _fetchHealthcareProfile(widget.healthcareId);
+      final prof = await _fetchHealthcareProfile(targetId);
       if (prof['success'] == true) {
+        final payload = prof['data'];
+        final normalized = (payload is Map<String, dynamic>)
+            ? (payload['data'] is Map<String, dynamic> ? payload['data'] : payload)
+            : <String, dynamic>{};
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => HospitalProfile(),
+            builder: (_) => HospitalProfile(data: normalized),
           ),
         );
       } else {

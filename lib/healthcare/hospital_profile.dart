@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:doc/screens/signin_screen.dart';
+import 'package:doc/utils/session_manager.dart';
 
 class HospitalProfile extends StatelessWidget {
-  const HospitalProfile({super.key});
+  final Map<String, dynamic> data;
+  const HospitalProfile({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -13,8 +16,15 @@ class HospitalProfile extends StatelessWidget {
         elevation: 0,
         backgroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Iconsax.arrow_left, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Iconsax.logout, color: Colors.black),
+          onPressed: () async {
+            await SessionManager.clearAll();
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            );
+          },
         ),
         title: Text(
           "Back",
@@ -38,7 +48,7 @@ class HospitalProfile extends StatelessWidget {
 
             // ✅ Hospital Name & City
             Text(
-              "Apollo Hospital",
+              (data['hospitalName'] ?? '').toString(),
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -47,7 +57,7 @@ class HospitalProfile extends StatelessWidget {
             ),
             const SizedBox(height: 3),
             Text(
-              "Bangalore",
+              (data['location'] ?? '').toString(),
               style: GoogleFonts.poppins(fontSize: 14, color: Colors.blue),
             ),
 
@@ -58,17 +68,17 @@ class HospitalProfile extends StatelessWidget {
               alignment: WrapAlignment.spaceBetween,
               runSpacing: 15,
               children: [
-                _contactInfo(Iconsax.sms, "Email", "hello@apollo.com"),
+                _contactInfo(Iconsax.sms, "Email", (data['email'] ?? '').toString()),
                 _contactInfo(
                   Iconsax.global,
                   "Website",
-                  "https://www.apollohospitals.com",
+                  (data['hospitalWebsite'] ?? '').toString(),
                 ),
-                _contactInfo(Iconsax.call, "Phone", "1860-500-1066"),
+                _contactInfo(Iconsax.call, "Phone", (data['phoneNumber'] ?? '').toString()),
                 _contactInfo(
                   Iconsax.location,
                   "Address",
-                  "4th Cross Road, 212, Dr Parvathamma Rajkumar Rd, Jayanagar, Bangalore 560011",
+                  (data['location'] ?? '').toString(),
                 ),
               ],
             ),
@@ -88,7 +98,7 @@ class HospitalProfile extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              "Apollo Hospitals is a leading Indian multinational healthcare group and one of Asia's largest integrated healthcare providers. Apollo is known for its Centers of Excellence in specialties such as cardiac sciences, oncology, and neurosciences, utilizing advanced medical technology to achieve superior clinical outcomes.",
+              (data['hospitalOverview'] ?? '').toString(),
               style: GoogleFonts.poppins(
                 fontSize: 13,
                 color: Colors.black87,
@@ -114,11 +124,9 @@ class HospitalProfile extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _departmentChip("Cardiology"),
-                _departmentChip("Orthopedics"),
-                _departmentChip("Neurosurgery"),
-                _departmentChip("Urology"),
-                _departmentChip("Oncology"),
+                ...List<String>.from((data['departmentsAvailable'] ?? const []))
+                    .map((d) => _departmentChip(d))
+                    .toList(),
               ],
             ),
 
