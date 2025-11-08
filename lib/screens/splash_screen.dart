@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'package:doc/profileprofile/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:doc/utils/session_manager.dart';
 import 'package:doc/screens/signin_screen.dart';
-import 'package:doc/profileprofile/professional_profile_page.dart';
+import 'package:doc/healthcare/hospial_form.dart';
+import 'package:doc/profileprofile/surgeon_form.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -30,15 +30,32 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (isLoggedIn) {
-      final userId = await SessionManager.getUserId();
-      debugPrint('✅ User already logged in. Redirecting to Profile page.');
+      final roleRaw = await SessionManager.getRole();
+      final role = (roleRaw ?? '').toLowerCase().trim();
+      final profileId = (await SessionManager.getProfileId()) ?? (await SessionManager.getUserId()) ?? '';
+      debugPrint('✅ User already logged in. Role: $role');
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProfessionalProfileViewPage(profileId: userId ?? ''),
-        ),
-      );
+      if (role.contains('hospital') || role.contains('health') || role.contains('org')) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HospitalForm()),
+        );
+      } else if (role.contains('surgeon') || role.contains('doctor')) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SurgeonForm(profileId: profileId, existingData: const {}),
+          ),
+        );
+      } else {
+        // Default to surgeon flow if role unknown
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SurgeonForm(profileId: profileId, existingData: const {}),
+          ),
+        );
+      }
     } else {
       debugPrint('🚪 No active session found. Redirecting to Login.');
       Navigator.pushReplacement(

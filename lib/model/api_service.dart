@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   static const String baseUrl =
-      'https://surgeon-search.onrender.com/api/sugeon';
+      'https://surgeon-search.onrender.com/api/surgeon';
 
   static Future<Map<String, dynamic>> createProfile({
     required String fullName,

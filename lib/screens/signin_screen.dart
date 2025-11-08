@@ -1,6 +1,8 @@
 import 'dart:convert';
-import 'package:doc/healthcare/hospial_profile.dart';
-import 'package:doc/profileprofile/profile.dart';
+import 'dart:async';
+import 'dart:io';
+import 'package:doc/healthcare/hospial_form.dart';
+import 'package:doc/profileprofile/surgeon_form.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:iconsax/iconsax.dart';
@@ -8,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:doc/utils/session_manager.dart';
 import 'package:doc/screens/signup_screen.dart';
-import 'package:doc/profileprofile/professional_profile_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -88,13 +89,46 @@ class _LoginScreenState extends State<LoginScreen> {
   /// 🌐 Wake up backend (Render) to prevent cold start delay
   Future<void> _prewarmServer() async {
     try {
+      // Use root path which always exists and still wakes the instance
       await http
-          .get(Uri.parse('https://surgeon-search.onrender.com/api/ping'))
-          .timeout(const Duration(seconds: 5));
+          .get(Uri.parse('https://surgeon-search.onrender.com/'))
+          .timeout(const Duration(seconds: 8));
       debugPrint('✅ Server is awake');
     } catch (_) {
       debugPrint('⚠️ Could not prewarm server.');
     }
+  }
+
+  /// 🔁 Helper: POST with retries/backoff to tolerate cold starts or transient TLS drops
+  Future<http.Response> _postWithRetry(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    int attempts = 3,
+  }) async {
+    final delays = <Duration>[
+      Duration.zero,
+      const Duration(seconds: 2),
+      const Duration(seconds: 5),
+    ];
+
+    for (var i = 0; i < attempts; i++) {
+      try {
+        return await http
+            .post(url, headers: headers, body: body)
+            .timeout(const Duration(seconds: 30));
+      } on TimeoutException catch (_) {
+        if (i == attempts - 1) rethrow;
+      } on SocketException catch (_) {
+        if (i == attempts - 1) rethrow;
+      } on HandshakeException catch (_) {
+        if (i == attempts - 1) rethrow;
+      }
+      // Backoff before next try
+      await Future.delayed(delays[i]);
+    }
+    // Should never reach here
+    throw Exception('Request failed after retries');
   }
 
   /// ✅ LOGIN FUNCTION
@@ -116,49 +150,80 @@ class _LoginScreenState extends State<LoginScreen> {
     const uuid = Uuid();
 
     try {
-      final response = await http
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email, 'password': password}),
-          )
-          .timeout(const Duration(seconds: 12));
+      final response = await _postWithRetry(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final root = jsonDecode(response.body);
+        final data = root is Map && root['data'] != null ? root['data'] : root;
         debugPrint(' Login successful: $data');
 
-        final token = data['token'];
-        final userData = data['user'] ?? data['profile'] ?? data;
+        final token = (data is Map) ? data['token'] : null;
+        final userData = (data is Map)
+            ? (data['user'] ?? data['profile'] ?? data)
+            : data;
+
+        String? role = (userData is Map)
+            ? (userData['type'] ?? userData['role'] ?? (data is Map ? (data['type'] ?? data['role']) : null))?.toString()
+            : null;
 
         // Extract or create profile ID (prefer deep extraction, fallback to fields/uuid)
         final extractedProfileId = _extractProfileId(userData) ??
-            _extractProfileId(data['profile']) ??
+            (data is Map ? _extractProfileId(data['profile']) : null) ??
             _extractProfileId(data);
         String profileId =
             ((extractedProfileId ??
-                        userData['_id']?.toString() ??
-                        userData['profile_id']?.toString() ??
-                        userData['id']?.toString() ??
+                        (userData is Map ? userData['_id']?.toString() : null) ??
+                        (userData is Map ? userData['profile_id']?.toString() : null) ??
+                        (userData is Map ? userData['id']?.toString() : null) ??
                         '') as String)
                     .trim();
         if (profileId.isEmpty) profileId = uuid.v4();
 
         // Save session
         await SessionManager.saveUserId(profileId);
+        await SessionManager.saveProfileId(profileId);
         await SessionManager.saveToken(token ?? '');
+        if (role != null && role.isNotEmpty) {
+          await SessionManager.saveRole(role);
+        }
 
         if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text(' Login Successful!')));
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProfessionalProfileViewPage(profileId: profileId),
-          ),
-        );
+        final rl = (role ?? '').toLowerCase().trim();
+        if (rl.contains('hospital') || rl.contains('health') || rl.contains('org')) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HospitalForm()),
+          );
+        } else if (rl.contains('surgeon') || rl.contains('doctor')) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SurgeonForm(
+                profileId: profileId,
+                existingData: const {},
+              ),
+            ),
+          );
+        } else {
+          // Default to Surgeon profile flow if role is unknown
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SurgeonForm(
+                profileId: profileId,
+                existingData: const {},
+              ),
+            ),
+          );
+        }
       } else {
         String message = 'Invalid credentials';
         try {
@@ -171,41 +236,28 @@ class _LoginScreenState extends State<LoginScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('❌ $message')));
       }
+    } on TimeoutException catch (_) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('⏳ Server is taking too long to respond. Please try again.')));
+    } on HandshakeException catch (_) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('🔒 Secure connection failed. Check date/time, VPN/proxy, or try a different network.')));
+    } on SocketException catch (_) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('📡 Network error. Check your internet connection and try again.')));
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('⚠️ Error: $e')));
+      ).showSnackBar(SnackBar(content: Text('⚠️ Unexpected error: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  /// ✅ ROLE-BASED REDIRECT FUNCTION (added safely)
-  Future<void> handleLogin() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? role = prefs.getString('user_role');
-
-    if (role == 'health_organization') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HealthcareOrganizations()),
-      );
-    } else if (role == 'sajan') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const EditProfessionalProfilePage(
-            profileId: '',
-            existingData: {},
-          ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unknown role, please sign up again.')),
-      );
-    }
-  }
+  
 
   @override
   void dispose() {

@@ -12,6 +12,7 @@ class SessionManager {
   static const _keyProfileId = 'profile_id';
   static const _keyToken = 'auth_token';
   static const _keyLoginId = 'login_id';
+  static const _keyRole = 'user_role';
 
   /// ✅ Save the logged-in user's ID
   static Future<void> saveUserId(String userId) async {
@@ -79,7 +80,16 @@ class SessionManager {
     await prefs.remove(_keyProfileId);
     await prefs.remove(_keyToken);
     await prefs.remove(_keyLoginId);
+    await prefs.remove(_keyRole);
   }
 
-  static Future<void> saveRole(String role) async {}
+  static Future<void> saveRole(String role) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyRole, role);
+  }
+
+  static Future<String?> getRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyRole);
+  }
 }

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 
-class HospitalProfileView extends StatelessWidget {
-  const HospitalProfileView({super.key});
+class HospitalProfile extends StatelessWidget {
+  const HospitalProfile({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -1,11 +1,9 @@
 // ignore_for_file: unused_import
 
 import 'dart:convert';
-import 'package:doc/healthcare/hospial_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doc/screens/signin_screen.dart';
-import 'package:doc/profileprofile/professional_profile_page.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});

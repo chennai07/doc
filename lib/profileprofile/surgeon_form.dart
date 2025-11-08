@@ -5,24 +5,23 @@ import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:doc/model/api_service.dart';
 
-class EditProfessionalProfilePage extends StatefulWidget {
+class SurgeonForm extends StatefulWidget {
   final String profileId;
   final Map<String, dynamic>? existingData;
 
-  const EditProfessionalProfilePage({
+  const SurgeonForm({
     super.key,
     required this.profileId,
     required this.existingData,
   });
 
   @override
-  State<EditProfessionalProfilePage> createState() =>
-      _EditProfessionalProfilePageState();
+  State<SurgeonForm> createState() => _SurgeonFormState();
 }
 
-class _EditProfessionalProfilePageState
-    extends State<EditProfessionalProfilePage> {
+class _SurgeonFormState extends State<SurgeonForm> {
   final formKey = GlobalKey<FormState>();
 
   late TextEditingController fullName;
@@ -40,6 +39,7 @@ class _EditProfessionalProfilePageState
   File? logBook;
 
   bool isLoading = false;
+  bool hasProfile = false;
 
   @override
   void initState() {
@@ -57,6 +57,32 @@ class _EditProfessionalProfilePageState
     surgicalExp = TextEditingController(text: d['surgicalExperience'] ?? '');
     portfolio = TextEditingController(text: d['portfolioLinks'] ?? '');
     summary = TextEditingController(text: d['summaryProfile'] ?? '');
+
+    // Fetch and prefill if profile exists for given profileId
+    _loadProfileIfAny();
+  }
+
+  Future<void> _loadProfileIfAny() async {
+    setState(() => isLoading = true);
+    final res = await ApiService.fetchProfileInfo(widget.profileId);
+    if (res['success'] == true) {
+      final body = res['data'];
+      // Some APIs wrap data again; try common shapes
+      final data = body is Map && body['data'] != null ? body['data'] : body;
+      final p = data is Map && data['profile'] != null ? data['profile'] : data;
+      if (p is Map) {
+        hasProfile = true;
+        fullName.text = (p['fullName'] ?? p['fullname'] ?? fullName.text) as String;
+        speciality.text = (p['speciality'] ?? speciality.text) as String;
+        subSpeciality.text = (p['subSpeciality'] ?? subSpeciality.text) as String;
+        degree.text = (p['degree'] ?? degree.text) as String;
+        experience.text = (p['yearsOfExperience']?.toString() ?? experience.text);
+        surgicalExp.text = (p['surgicalExperience'] ?? surgicalExp.text) as String;
+        portfolio.text = (p['portfolioLinks'] ?? portfolio.text) as String;
+        summary.text = (p['summaryProfile'] ?? summary.text) as String;
+      }
+    }
+    setState(() => isLoading = false);
   }
 
   Future<File?> pickFile(List<String> extensions) async {
@@ -74,7 +100,7 @@ class _EditProfessionalProfilePageState
     setState(() => isLoading = true);
 
     final uri = Uri.parse(
-      "https://surgeon-search.onrender.com/api/sugeon/profile/update/${widget.profileId}",
+      "https://surgeon-search.onrender.com/api/surgeon/profile/update/${widget.profileId}",
     );
 
     var req = http.MultipartRequest("PUT", uri);
@@ -135,6 +161,38 @@ class _EditProfessionalProfilePageState
       Get.back(); // return to profile view
     } else {
       Get.snackbar("❌ Update Failed", msg);
+    }
+
+    setState(() => isLoading = false);
+  }
+
+  Future<void> createProfile() async {
+    if (!formKey.currentState!.validate()) return;
+
+    setState(() => isLoading = true);
+
+    final result = await ApiService.createProfile(
+      fullName: fullName.text,
+      phoneNumber: '',
+      email: '',
+      location: '',
+      degree: degree.text,
+      speciality: speciality.text,
+      subSpeciality: subSpeciality.text,
+      summaryProfile: summary.text,
+      termsAccepted: true,
+      profileId: widget.profileId,
+      portfolioLinks: portfolio.text,
+      workExperience: const [],
+      imageFile: profilePic,
+      cvFile: cv,
+    );
+
+    if (result['success'] == true) {
+      hasProfile = true;
+      Get.snackbar("✅ Success", "Profile Created Successfully");
+    } else {
+      Get.snackbar("❌ Create Failed", result['message']?.toString() ?? 'Error');
     }
 
     setState(() => isLoading = false);
@@ -247,11 +305,11 @@ class _EditProfessionalProfilePageState
 
                       const SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: updateProfile,
+                        onPressed: hasProfile ? updateProfile : createProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blueAccent,
                         ),
-                        child: const Text("Update Profile"),
+                        child: Text(hasProfile ? "Update Profile" : "Create Profile"),
                       ),
                     ],
                   ),

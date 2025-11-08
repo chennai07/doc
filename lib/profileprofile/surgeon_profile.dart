@@ -92,7 +92,7 @@ class _ProfessionalProfileViewPageState
             // 👇 Add more profile fields here (name, email, specialty, etc.)
             const SizedBox(height: 20),
             const Text(
-              "Your Profile Details",
+              "  Details",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const SizedBox(height: 10),

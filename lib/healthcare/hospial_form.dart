@@ -1,20 +1,18 @@
 import 'dart:io';
-import 'package:doc/healthcare/profile_view.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
-class HealthcareOrganizations extends StatefulWidget {
-  const HealthcareOrganizations({super.key});
+class HospitalForm extends StatefulWidget {
+  const HospitalForm({super.key});
 
   @override
-  State<HealthcareOrganizations> createState() =>
-      _HealthcareOrganizationsState();
+  State<HospitalForm> createState() => _HospitalFormState();
 }
 
-class _HealthcareOrganizationsState extends State<HealthcareOrganizations> {
+class _HospitalFormState extends State<HospitalForm> {
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
