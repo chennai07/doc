@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   static const String baseUrl =
-      'https://surgeon-search.onrender.com/api/surgeon';
+      'https://surgeon-search.onrender.com/api/sugeon';
   static const String healthcareBase =
       'https://surgeon-search.onrender.com/api/healthcare';
 
@@ -32,7 +32,8 @@ class ApiService {
     File? logBookFile,
   }) async {
     try {
-      var uri = Uri.parse('$baseUrl/add');
+      var uri = Uri.parse('$baseUrl/create-profile');
+      print('🔗 Creating profile at URL: $uri');
       var request = http.MultipartRequest('POST', uri);
 
       // ✅ Normal fields

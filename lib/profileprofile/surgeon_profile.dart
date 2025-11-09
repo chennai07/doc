@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:doc/model/doctor_profile_data.dart';
+import 'package:doc/model/api_service.dart';
 import 'package:doc/utils/session_manager.dart';
 import 'package:doc/screens/signin_screen.dart';
 
@@ -13,130 +16,169 @@ class ProfessionalProfileViewPage extends StatefulWidget {
 
 class _ProfessionalProfileViewPageState
     extends State<ProfessionalProfileViewPage> {
-  bool _isLoggingOut = false;
+  bool _isLoading = true;
+  DoctorProfileData? _profile;
+  String? _error;
 
-  /// 🚪 Logout function
-  Future<void> _logoutUser() async {
-    if (_isLoggingOut) return;
-    setState(() => _isLoggingOut = true);
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
 
+  Future<void> _loadProfile() async {
     try {
-      await SessionManager.clearAll();
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🚪 Logged out successfully.')),
-      );
-
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (_) => false,
-      );
+      final result = await ApiService.fetchProfileInfo(widget.profileId);
+      if (result['success'] == true) {
+        setState(() {
+          _profile = DoctorProfileData.fromMap(result['data']);
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _error = result['message'] ?? 'Failed to load profile';
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('⚠️ Error logging out: $e')));
-    } finally {
-      if (mounted) setState(() => _isLoggingOut = false);
+      setState(() {
+        _error = 'Error loading profile: $e';
+        _isLoading = false;
+      });
     }
+  }
+
+  Future<void> _logout() async {
+    await SessionManager.clearAll();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final profileId = widget.profileId;
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
+    if (_error != null || _profile == null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text("Doctor Profile", style: TextStyle(color: Colors.black)),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(_error ?? 'Profile not found'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _logout,
+                child: const Text('Logout'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Display the doctor profile directly in this widget
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'Professional Profile',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
         ),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _isLoggingOut ? null : _logoutUser,
-            tooltip: 'Logout',
-          ),
-        ],
+        title: const Text("Doctor Profile", style: TextStyle(color: Colors.black)),
+        centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
             Center(
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.blue.shade100,
-                child: const Icon(Icons.person, size: 60, color: Colors.blue),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: Text(
-                "Profile ID: $profileId",
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-            const Divider(thickness: 1),
-
-            // 👇 Add more profile fields here (name, email, specialty, etc.)
-            const SizedBox(height: 20),
-            const Text(
-              "  Details",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              "This is where you can display details fetched from the API — "
-              "such as name, specialization, email, and other data tied to your profile ID.",
-              style: TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-
-            const Spacer(),
-
-            // 🔘 Logout Button (Bottom)
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              child: Column(
+                children: [
+                  const CircleAvatar(
+                    radius: 45,
+                    backgroundImage: AssetImage("assets/profile.png"),
+                    child: Icon(Icons.person, size: 60, color: Colors.grey),
                   ),
-                  elevation: 0,
-                ),
-                icon: const Icon(Icons.logout, color: Colors.white),
-                label: _isLoggingOut
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        "Logout",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                onPressed: _isLoggingOut ? null : _logoutUser,
+                  const SizedBox(height: 12),
+                  Text(_profile!.name,
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black)),
+                  Text(_profile!.speciality,
+                      style: const TextStyle(
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.w600)),
+                ],
               ),
             ),
+            const SizedBox(height: 24),
+
+            const Text("About", style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            Text(_profile!.summary.isNotEmpty ? _profile!.summary : "No summary available", 
+                style: const TextStyle(height: 1.4)),
+
+            const SizedBox(height: 20),
+            const Divider(),
+
+            const Text("Education", style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            Text("${_profile!.degree}${_profile!.subSpeciality.isNotEmpty ? ' - ${_profile!.subSpeciality}' : ''}",
+                style: const TextStyle(color: Colors.black87)),
+
+            const SizedBox(height: 20),
+            const Divider(),
+
+            const Text("Experience", style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            if (_profile!.designation.isNotEmpty && _profile!.organization.isNotEmpty) ...[
+              Text("${_profile!.designation} at ${_profile!.organization}",
+                  style: const TextStyle(color: Colors.black87)),
+              if (_profile!.period.isNotEmpty || _profile!.workLocation.isNotEmpty)
+                Text("${_profile!.period}${_profile!.workLocation.isNotEmpty ? ' | ${_profile!.workLocation}' : ''}",
+                    style: const TextStyle(color: Colors.grey)),
+            ] else
+              const Text("No work experience added", style: TextStyle(color: Colors.grey)),
+
+            const SizedBox(height: 20),
+            const Divider(),
+
+            const Text("Contact", style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            if (_profile!.phone.isNotEmpty) Text("📞 ${_profile!.phone}"),
+            if (_profile!.email.isNotEmpty) Text("✉️ ${_profile!.email}"),
+            if (_profile!.location.isNotEmpty) Text("📍 ${_profile!.location}"),
+
+            const SizedBox(height: 20),
+            if (_profile!.portfolio.isNotEmpty)
+              Text("🔗 Portfolio: ${_profile!.portfolio}",
+                  style: const TextStyle(color: Colors.blueAccent)),
           ],
         ),
       ),

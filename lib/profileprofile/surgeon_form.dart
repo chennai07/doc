@@ -74,7 +74,6 @@ class _SurgeonFormState extends State<SurgeonForm> {
   File? highestDegree;
   File? logBook;
 
-  String? selectedYearsExperience;
   String? selectedSurgicalExperience;
 
   final List<String> expOptions = const [
@@ -93,6 +92,7 @@ class _SurgeonFormState extends State<SurgeonForm> {
   List<Map<String, dynamic>> workExperiences = [
     {"designation": "", "organization": "", "from": "", "to": "", "location": ""}
   ];
+  List<List<TextEditingController>> workExpControllers = [];
 
   @override
   void initState() {
@@ -115,13 +115,13 @@ class _SurgeonFormState extends State<SurgeonForm> {
     location = TextEditingController(text: d['location'] ?? '');
     stateCtrl = TextEditingController(text: d['state'] ?? '');
     districtCtrl = TextEditingController(text: d['district'] ?? '');
-    selectedYearsExperience = d['yearsOfExperience']?.toString().isNotEmpty == true
-        ? d['yearsOfExperience'].toString()
-        : null;
     selectedSurgicalExperience = d['surgicalExperience']?.toString().isNotEmpty == true
         ? d['surgicalExperience'].toString()
         : null;
 
+    // Initialize work experience controllers
+    _initializeWorkExpControllers();
+    
     // Fetch and prefill if profile exists for given profileId
     _loadProfileIfAny();
   }
@@ -140,7 +140,7 @@ class _SurgeonFormState extends State<SurgeonForm> {
         speciality.text = (p['speciality'] ?? speciality.text) as String;
         subSpeciality.text = (p['subSpeciality'] ?? subSpeciality.text) as String;
         degree.text = (p['degree'] ?? degree.text) as String;
-        selectedYearsExperience = p['yearsOfExperience']?.toString() ?? selectedYearsExperience;
+        experience.text = p['yearsOfExperience']?.toString() ?? experience.text;
         selectedSurgicalExperience = (p['surgicalExperience'] ?? selectedSurgicalExperience)?.toString();
         portfolio.text = (p['portfolioLinks'] ?? portfolio.text) as String;
         summary.text = (p['summaryProfile'] ?? summary.text) as String;
@@ -185,7 +185,7 @@ class _SurgeonFormState extends State<SurgeonForm> {
     setState(() => isLoading = true);
 
     final uri = Uri.parse(
-      "https://surgeon-search.onrender.com/api/surgeon/profile/update/${widget.profileId}",
+      "https://surgeon-search.onrender.com/api/sugeon/profile/update/${widget.profileId}",
     );
 
     var req = http.MultipartRequest("PUT", uri);
@@ -195,7 +195,7 @@ class _SurgeonFormState extends State<SurgeonForm> {
       "speciality": speciality.text,
       "subSpeciality": subSpeciality.text,
       "degree": degree.text,
-      "yearsOfExperience": selectedYearsExperience ?? '',
+      "yearsOfExperience": experience.text,
       "surgicalExperience": selectedSurgicalExperience ?? '',
       "portfolioLinks": portfolio.text,
       "summaryProfile": summary.text,
@@ -269,6 +269,9 @@ class _SurgeonFormState extends State<SurgeonForm> {
     if (!formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
+    
+    // Update work experience data from controllers
+    _updateWorkExperienceData();
 
     final result = await ApiService.createProfile(
       fullName: fullName.text,
@@ -282,13 +285,13 @@ class _SurgeonFormState extends State<SurgeonForm> {
       termsAccepted: termsAccepted,
       profileId: widget.profileId,
       portfolioLinks: portfolio.text,
-      workExperience: const [],
+      workExperience: workExperiences,
       departmentsAvailable: const [],
       imageFile: profilePic,
       cvFile: cv,
       highestDegreeFile: highestDegree,
       logBookFile: logBook,
-      yearsOfExperience: selectedYearsExperience ?? '',
+      yearsOfExperience: experience.text,
       surgicalExperience: selectedSurgicalExperience ?? '',
       state: stateCtrl.text,
       district: districtCtrl.text,
@@ -352,15 +355,81 @@ Future<void> pickCVFile() async {
   }
 }
 
+void _initializeWorkExpControllers() {
+  workExpControllers.clear();
+  for (int i = 0; i < workExperiences.length; i++) {
+    workExpControllers.add([
+      TextEditingController(text: workExperiences[i]['designation'] ?? ''),
+      TextEditingController(text: workExperiences[i]['organization'] ?? ''),
+      TextEditingController(text: workExperiences[i]['from'] ?? ''),
+      TextEditingController(text: workExperiences[i]['to'] ?? ''),
+      TextEditingController(text: workExperiences[i]['location'] ?? ''),
+    ]);
+  }
+}
+
 void addWorkExperience() {
   setState(() {
     workExperiences.add(
         {"designation": "", "organization": "", "from": "", "to": "", "location": ""});
+    workExpControllers.add([
+      TextEditingController(),
+      TextEditingController(),
+      TextEditingController(),
+      TextEditingController(),
+      TextEditingController(),
+    ]);
   });
 }
 
 void removeWorkExperience(int index) {
-  setState(() => workExperiences.removeAt(index));
+  setState(() {
+    workExperiences.removeAt(index);
+    // Dispose controllers before removing
+    for (var controller in workExpControllers[index]) {
+      controller.dispose();
+    }
+    workExpControllers.removeAt(index);
+  });
+}
+
+void _updateWorkExperienceData() {
+  for (int i = 0; i < workExpControllers.length; i++) {
+    workExperiences[i] = {
+      'designation': workExpControllers[i][0].text,
+      'healthcareOrganization': workExpControllers[i][1].text,
+      'from': workExpControllers[i][2].text,
+      'to': workExpControllers[i][3].text,
+      'location': workExpControllers[i][4].text,
+    };
+  }
+}
+
+@override
+void dispose() {
+  // Dispose all text controllers
+  fullName.dispose();
+  speciality.dispose();
+  subSpeciality.dispose();
+  degree.dispose();
+  experience.dispose();
+  surgicalExp.dispose();
+  portfolio.dispose();
+  summary.dispose();
+  phoneNumber.dispose();
+  email.dispose();
+  location.dispose();
+  stateCtrl.dispose();
+  districtCtrl.dispose();
+  
+  // Dispose work experience controllers
+  for (var controllerList in workExpControllers) {
+    for (var controller in controllerList) {
+      controller.dispose();
+    }
+  }
+  
+  super.dispose();
 }
 
 @override
@@ -462,11 +531,16 @@ Widget build(BuildContext context) {
                   TextFormField(controller: subSpeciality, decoration: inputDecoration("Your Sub-speciality")),
 
                   titleText("Years of experience"),
-                  DropdownButtonFormField<String>(
-                    value: selectedYearsExperience,
-                    items: expOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                    onChanged: (v) => setState(() => selectedYearsExperience = v),
-                    decoration: inputDecoration("Select years of experience"),
+                  TextFormField(
+                    controller: experience,
+                    decoration: inputDecoration("Enter years of experience"),
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Required';
+                      final num = int.tryParse(v);
+                      if (num == null || num < 0) return 'Enter a valid number';
+                      return null;
+                    },
                   ),
 
                   titleText("Surgical experience"),
@@ -481,8 +555,9 @@ Widget build(BuildContext context) {
                   TextFormField(controller: summary, maxLines: 4, decoration: inputDecoration("Tell about yourself")),
 
                   titleText("Work experience"),
-                  ...workExperiences.asMap().entries.map((entry) {
+                  ...workExpControllers.asMap().entries.map((entry) {
                     int index = entry.key;
+                    List<TextEditingController> controllers = entry.value;
                     return Card(
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -493,20 +568,35 @@ Widget build(BuildContext context) {
                         padding: const EdgeInsets.all(12),
                         child: Column(
                           children: [
-                            TextFormField(decoration: inputDecoration("Designation")),
+                            TextFormField(
+                              controller: controllers[0],
+                              decoration: inputDecoration("Designation"),
+                            ),
                             const SizedBox(height: 8),
-                            TextFormField(decoration: inputDecoration("Healthcare Organization")),
+                            TextFormField(
+                              controller: controllers[1],
+                              decoration: inputDecoration("Healthcare Organization"),
+                            ),
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                Expanded(child: TextFormField(decoration: inputDecoration("From (Year)"))),
+                                Expanded(child: TextFormField(
+                                  controller: controllers[2],
+                                  decoration: inputDecoration("From (Year)"),
+                                )),
                                 const SizedBox(width: 10),
-                                Expanded(child: TextFormField(decoration: inputDecoration("To (Year)"))),
+                                Expanded(child: TextFormField(
+                                  controller: controllers[3],
+                                  decoration: inputDecoration("To (Year)"),
+                                )),
                               ],
                             ),
                             const SizedBox(height: 8),
-                            TextFormField(decoration: inputDecoration("Location")),
-                            if (workExperiences.length > 1)
+                            TextFormField(
+                              controller: controllers[4],
+                              decoration: inputDecoration("Location"),
+                            ),
+                            if (workExpControllers.length > 1)
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: IconButton(

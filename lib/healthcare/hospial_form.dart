@@ -147,7 +147,14 @@ class _HospitalFormState extends State<HospitalForm> {
         final normalized = (payload is Map<String, dynamic>)
             ? (payload['data'] is Map<String, dynamic> ? payload['data'] : payload)
             : <String, dynamic>{};
-        if (normalized.isNotEmpty) {
+        
+        // Check if the profile has meaningful data (not just empty or minimal data)
+        final hasValidProfile = normalized.isNotEmpty && 
+            (normalized['hospitalName']?.toString().trim().isNotEmpty == true ||
+             normalized['email']?.toString().trim().isNotEmpty == true ||
+             normalized['phoneNumber']?.toString().trim().isNotEmpty == true);
+        
+        if (hasValidProfile) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => HospitalProfile(data: normalized)),

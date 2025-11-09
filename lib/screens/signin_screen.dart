@@ -211,10 +211,25 @@ class _LoginScreenState extends State<LoginScreen> {
               try { parsed = jsonDecode(body); } catch (_) { parsed = {}; }
               final payload = (parsed is Map && parsed['data'] != null) ? parsed['data'] : parsed;
               final mapPayload = (payload is Map<String, dynamic>) ? payload : <String, dynamic>{};
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => HospitalProfile(data: mapPayload)),
-              );
+              
+              // Check if the profile has meaningful data (not just empty or minimal data)
+              final hasValidProfile = mapPayload.isNotEmpty && 
+                  (mapPayload['hospitalName']?.toString().trim().isNotEmpty == true ||
+                   mapPayload['email']?.toString().trim().isNotEmpty == true ||
+                   mapPayload['phoneNumber']?.toString().trim().isNotEmpty == true);
+              
+              if (hasValidProfile) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => HospitalProfile(data: mapPayload)),
+                );
+              } else {
+                // Profile exists but is empty/incomplete, go to form
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: profileId)),
+                );
+              }
             } else {
               Navigator.pushReplacement(
                 context,
