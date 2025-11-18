@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:doc/healthcare/hospial_form.dart';
 import 'package:doc/healthcare/hospital_profile.dart';
+import 'package:doc/Navbar.dart';
 import 'package:doc/profileprofile/surgeon_form.dart';
 import 'package:doc/profileprofile/surgeon_profile.dart';
 import 'package:doc/model/api_service.dart';
@@ -94,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       // Use root path which always exists and still wakes the instance
       await http
-          .get(Uri.parse('https://surgeon-search.onrender.com/'))
+          .get(Uri.parse('http://13.203.67.154:3000/'))
           .timeout(const Duration(seconds: 8));
       debugPrint(' Server is awake');
     } catch (_) {
@@ -149,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
-    final url = Uri.parse('https://surgeon-search.onrender.com/api/signin');
+    final url = Uri.parse('http://13.203.67.154:3000/api/signin');
     const uuid = Uuid();
 
     try {
@@ -205,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
           final existingHid = await SessionManager.getHealthcareId();
           final hid = (existingHid == null || existingHid.isEmpty) ? profileId : existingHid;
           try {
-            final url = Uri.parse('https://surgeon-search.onrender.com/api/healthcare/healthcare-profile/$hid');
+            final url = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/$hid');
             final resp = await http.get(url).timeout(const Duration(seconds: 15));
             if (resp.statusCode == 200) {
               final body = resp.body.trimLeft();
@@ -223,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
               if (hasValidProfile) {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (_) => HospitalProfile(data: mapPayload)),
+                  MaterialPageRoute(builder: (_) => Navbar(hospitalData: mapPayload)),
                 );
               } else {
                 // Profile exists but is empty/incomplete, go to form

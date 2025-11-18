@@ -39,7 +39,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     setState(() => isLoading = true);
 
-    const String apiUrl = "https://surgeon-search.onrender.com/api/signup";
+    const String apiUrl = "http://13.203.67.154:3000/api/signup";
 
     // ✅ Send all key variants for compatibility
     final Map<String, dynamic> requestBody = {

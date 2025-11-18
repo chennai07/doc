@@ -6,6 +6,7 @@ import 'package:doc/screens/signin_screen.dart';
 import 'package:doc/healthcare/hospial_form.dart';
 import 'package:doc/profileprofile/surgeon_form.dart';
 import 'package:doc/healthcare/hospital_profile.dart';
+import 'package:doc/Navbar.dart';
 import 'package:http/http.dart' as http;
 
 class SplashScreen extends StatefulWidget {
@@ -41,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (role.contains('hospital') || role.contains('health') || role.contains('org')) {
         final hid = (await SessionManager.getHealthcareId()) ?? profileId;
         try {
-          final url = Uri.parse('https://surgeon-search.onrender.com/api/healthcare/healthcare-profile/$hid');
+          final url = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/$hid');
           final resp = await http.get(url).timeout(const Duration(seconds: 12));
           if (!mounted) return;
           if (resp.statusCode == 200) {
@@ -51,7 +52,7 @@ class _SplashScreenState extends State<SplashScreen> {
             final mapPayload = (payload is Map<String, dynamic>) ? payload : <String, dynamic>{};
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => HospitalProfile(data: mapPayload)),
+              MaterialPageRoute(builder: (_) => Navbar(hospitalData: mapPayload)),
             );
           } else {
             Navigator.pushReplacement(

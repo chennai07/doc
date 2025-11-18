@@ -49,7 +49,7 @@ class _ProfileViewState extends State<ProfileView> {
 
   Future<void> fetchProfileInfo() async {
     final String apiUrl =
-        "https://surgeon-search.onrender.com/api/sugeon/profile-info/${widget.profileId}";
+        "http://13.203.67.154:3000/api/sugeon/profile-info/${widget.profileId}";
 
     try {
       final response = await http.get(Uri.parse(apiUrl));

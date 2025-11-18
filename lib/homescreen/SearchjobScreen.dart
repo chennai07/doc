@@ -48,7 +48,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       final url = Uri.parse(
-          'https://surgeon-search.onrender.com/api/healthcare/joblist-surgeons');
+          'http://13.203.67.154:3000/api/healthcare/joblist-surgeons');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {

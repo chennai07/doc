@@ -44,7 +44,7 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
       }
 
       final url = Uri.parse(
-          'https://surgeon-search.onrender.com/api/jobs/applied-jobs/$profileId');
+          'http://13.203.67.154:3000/api/jobs/applied-jobs/$profileId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {

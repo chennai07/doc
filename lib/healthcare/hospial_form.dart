@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:doc/model/api_service.dart';
 import 'package:doc/healthcare/hospital_profile.dart';
+import 'package:doc/Navbar.dart';
 import 'package:http/http.dart' as http;
 import 'package:doc/utils/session_manager.dart';
 
@@ -34,7 +35,7 @@ Future<Map<String, dynamic>> _addHealthcareProfile({
   File? logoFile,
 }) async {
   try {
-    final uri = Uri.parse('https://surgeon-search.onrender.com/api/healthcare/add');
+    final uri = Uri.parse('http://13.203.67.154:3000/api/healthcare/add');
     final req = http.MultipartRequest('POST', uri);
 
     req.fields.addAll({
@@ -97,7 +98,7 @@ Future<Map<String, dynamic>> _addHealthcareProfile({
 
 Future<Map<String, dynamic>> _fetchHealthcareProfile(String healthcareId) async {
   try {
-    final url = Uri.parse('https://surgeon-search.onrender.com/api/healthcare/healthcare-profile/$healthcareId');
+    final url = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/$healthcareId');
     final res = await http.get(url);
     final body = res.body;
     final ct = res.headers['content-type'] ?? '';
@@ -157,7 +158,7 @@ class _HospitalFormState extends State<HospitalForm> {
         if (hasValidProfile) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => HospitalProfile(data: normalized)),
+            MaterialPageRoute(builder: (_) => Navbar(hospitalData: normalized)),
           );
         }
       }
@@ -270,7 +271,7 @@ class _HospitalFormState extends State<HospitalForm> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => HospitalProfile(data: normalized),
+            builder: (_) => Navbar(hospitalData: normalized),
           ),
         );
       } else {

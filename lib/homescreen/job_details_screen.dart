@@ -103,7 +103,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
 
     try {
       final url = Uri.parse(
-          'https://surgeon-search.onrender.com/api/healthcare/job-profile/${widget.jobId}');
+          'http://13.203.67.154:3000/api/healthcare/job-profile/${widget.jobId}');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -172,7 +172,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
           .toString();
 
       final url =
-          Uri.parse('https://surgeon-search.onrender.com/api/jobs/apply');
+          Uri.parse('http://13.203.67.154:3000/api/jobs/apply');
       final request = http.MultipartRequest('POST', url);
 
       request.fields['firstName'] = firstName;

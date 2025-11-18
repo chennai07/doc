@@ -6,7 +6,13 @@ import 'package:doc/utils/session_manager.dart';
 
 class HospitalProfile extends StatelessWidget {
   final Map<String, dynamic> data;
-  const HospitalProfile({super.key, required this.data});
+  final bool showBottomBar;
+
+  const HospitalProfile({
+    super.key,
+    required this.data,
+    this.showBottomBar = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -154,21 +160,23 @@ class HospitalProfile extends StatelessWidget {
       ),
 
       // ✅ Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        height: 65,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.grey.shade300)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _bottomIcon(Iconsax.search_normal, "Search", false),
-            _bottomIcon(Iconsax.document, "Applied Jobs", false),
-            _bottomIcon(Iconsax.user, "Profile", true),
-          ],
-        ),
-      ),
+      bottomNavigationBar: showBottomBar
+          ? Container(
+              height: 65,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _bottomIcon(Iconsax.search_normal, "Search", false),
+                  _bottomIcon(Iconsax.document, "Applied Jobs", false),
+                  _bottomIcon(Iconsax.user, "Profile", true),
+                ],
+              ),
+            )
+          : null,
     );
   }
 
