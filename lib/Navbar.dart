@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:doc/healthcare/hospital_profile.dart';
-import 'package:doc/hospital/myJobsPage.dart';
+import 'package:doc/hospital/Myjobsscreen.dart' as myjobs_screen;
+import 'package:doc/hospital/myJobsPage.dart' as postjob_screen;
 
 class Navbar extends StatefulWidget {
   final Map<String, dynamic> hospitalData;
@@ -15,19 +15,20 @@ class _NavbarState extends State<Navbar> {
   int selectedIndex = 0;
 
   late final List<Widget> pages;
+  late final String healthcareId;
 
   @override
   void initState() {
     super.initState();
+    healthcareId = (widget.hospitalData['_id'] ??
+            widget.hospitalData['id'] ??
+            widget.hospitalData['healthcare_id'] ??
+            '')
+        .toString();
     pages = [
-      HospitalProfile(
-        data: widget.hospitalData,
-        showBottomBar: false,
-      ),
+      myjobs_screen.MyJobsPage(healthcareId: healthcareId),
       const ApplicantsPage(),
-      MyJobsPage(
-        onHospitalNameTap: () => onTabSelected(0),
-      ),
+      postjob_screen.MyJobsPage(healthcareId: healthcareId),
       const ScheduleInterviewPage(),
     ];
   }

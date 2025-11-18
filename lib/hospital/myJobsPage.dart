@@ -4,7 +4,9 @@ import 'package:doc/hospital/applicants.dart';
 class MyJobsPage extends StatefulWidget {
   final VoidCallback? onHospitalNameTap;
 
-  const MyJobsPage({super.key, this.onHospitalNameTap});
+  final String? healthcareId;
+
+  const MyJobsPage({super.key, this.onHospitalNameTap, this.healthcareId});
 
   @override
   State<MyJobsPage> createState() => _MyJobsPageState();
@@ -88,98 +90,6 @@ class _MyJobsPageState extends State<MyJobsPage> {
 
               const SizedBox(height: 20),
 
-              // ---------- SEARCH BAR ----------
-              TextField(
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                  hintText: "Search",
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Colors.blueAccent),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(
-                      color: Colors.blue,
-                      width: 1.4,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ---------- FILTER + ACTIVE/CLOSED ----------
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.blue),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.filter_alt, color: Colors.blue),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => tabIndex = 0),
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: tabIndex == 0
-                                    ? Colors.blue
-                                    : const Color(0xffe8f1ff),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                "Active",
-                                style: TextStyle(
-                                  color: tabIndex == 0
-                                      ? Colors.white
-                                      : Colors.blue,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => tabIndex = 1),
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: tabIndex == 1
-                                    ? Colors.blue
-                                    : const Color(0xffe8f1ff),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                "Closed",
-                                style: TextStyle(
-                                  color: tabIndex == 1
-                                      ? Colors.white
-                                      : Colors.blue,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
               const SizedBox(height: 20),
 
               const Text(
@@ -230,7 +140,9 @@ class _MyJobsPageState extends State<MyJobsPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const Applicants(),
+                            builder: (_) => Applicants(
+                              healthcareId: widget.healthcareId,
+                            ),
                           ),
                         );
                       },

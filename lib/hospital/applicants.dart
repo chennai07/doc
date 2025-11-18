@@ -4,7 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:doc/utils/session_manager.dart';
 
 class Applicants extends StatefulWidget {
-  const Applicants({super.key});
+  final String? healthcareId;
+
+  const Applicants({super.key, this.healthcareId});
 
   @override
   State<Applicants> createState() => _ApplicantsState();
@@ -48,10 +50,11 @@ class _ApplicantsState extends State<Applicants> {
 
     if (picked != null) {
       setState(() {
+        // Store in YYYY-MM-DD format so backend can parse it as a Date
         deadlineCtrl.text =
-            "${picked.day.toString().padLeft(2, '0')}/"
-            "${picked.month.toString().padLeft(2, '0')}/"
-            "${picked.year}";
+            "${picked.year.toString().padLeft(4, '0')}-"
+            "${picked.month.toString().padLeft(2, '0')}-"
+            "${picked.day.toString().padLeft(2, '0')}";
       });
     }
   }
@@ -71,8 +74,20 @@ class _ApplicantsState extends State<Applicants> {
     setState(() => isSubmitting = true);
 
     try {
-      final healthcareId =
+      final storedId =
           (await SessionManager.getHealthcareId()) ?? await SessionManager.getProfileId() ?? '';
+      final healthcareId = (widget.healthcareId != null && widget.healthcareId!.isNotEmpty)
+          ? widget.healthcareId!
+          : storedId;
+
+      if (healthcareId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Healthcare id not found. Please login or create hospital profile.'),
+          ),
+        );
+        return;
+      }
 
       final uri = Uri.parse(
         'http://13.203.67.154:3000/api/healthcare/jobpost',
@@ -94,11 +109,17 @@ class _ApplicantsState extends State<Applicants> {
         'applicationDeadline': deadlineCtrl.text.trim(),
       };
 
+      print('🩺 jobpost healthcareId = ' + healthcareId);
+      print('🩺 jobpost payload = ' + jsonEncode(payload));
+
       final resp = await http.post(
         uri,
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       );
+
+      print('🩺 jobpost response status = ' + resp.statusCode.toString());
+      print('🩺 jobpost response body = ' + resp.body.toString());
 
       if (!mounted) return;
 
@@ -178,7 +199,7 @@ class _ApplicantsState extends State<Applicants> {
             _dropdown(
               value: jobType,
               hint: "Job Type",
-              items: ["Full-Time", "Part-Time", "Contract"],
+              items: ["Full Time", "Part Time", "Contract"],
               onChanged: (v) => setState(() => jobType = v),
             ),
 
