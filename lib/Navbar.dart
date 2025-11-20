@@ -3,6 +3,7 @@ import 'package:doc/hospital/Myjobsscreen.dart' as myjobs_screen;
 import 'package:doc/hospital/myJobsPage.dart' as postjob_screen;
 import 'package:doc/hospital/ManageJobListings.dart';
 import 'package:doc/healthcare/hospital_profile.dart';
+import 'package:doc/hospital/Interviewpage.dart';
 
 class Navbar extends StatefulWidget {
   final Map<String, dynamic> hospitalData;
@@ -109,40 +110,6 @@ class _NavbarState extends State<Navbar> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class ApplicantsPage extends StatelessWidget {
-  const ApplicantsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Text(
-          'Applicants screen coming soon',
-          style: TextStyle(fontSize: 16),
-        ),
-      ),
-    );
-  }
-}
-
-class ScheduleInterviewPage extends StatelessWidget {
-  const ScheduleInterviewPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Text(
-          'Interviews screen coming soon',
-          style: TextStyle(fontSize: 16),
-        ),
       ),
     );
   }

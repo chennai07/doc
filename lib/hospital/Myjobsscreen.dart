@@ -326,6 +326,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
   Future<void> _viewApplicantsForJob(Map<String, dynamic> job) async {
     final rawId = job['_id'] ?? job['id'] ?? '';
     final jobId = rawId.toString();
+    final jobTitle = (job['jobTitle'] ?? job['title'] ?? '').toString();
     if (jobId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Job id not found for this listing.')),
@@ -372,6 +373,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
           MaterialPageRoute(
             builder: (context) => ApplicantsListPage(
               jobId: jobId,
+              jobTitle: jobTitle,
               applicants: applicants,
             ),
           ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doc/utils/session_manager.dart';
 import 'package:doc/hospital/JobDetailsScreen.dart';
+import 'package:doc/hospital/applicantcard.dart';
 
 class ManageJobListings extends StatefulWidget {
   const ManageJobListings({super.key});
@@ -19,6 +20,9 @@ class _ManageJobListingsState extends State<ManageJobListings> {
 
   // ---------- APPLICANTS BY JOB ID (mock data) ----------
   final Map<String, List<Map<String, dynamic>>> applicantsByJobId = {};
+
+  // Aggregated applicants across all jobs for this healthcare
+  List<Map<String, dynamic>> _applicants = [];
 
   bool _isLoading = true;
   String? _error;
@@ -76,8 +80,15 @@ class _ManageJobListingsState extends State<ManageJobListings> {
         }
 
         if (!mounted) return;
+        // First store jobs, then fetch applicants for all jobs
         setState(() {
           jobs = fetchedJobs;
+        });
+
+        await _fetchApplicantsForAllJobs();
+
+        if (!mounted) return;
+        setState(() {
           _isLoading = false;
         });
       } else if (response.statusCode == 404) {
@@ -85,6 +96,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
         if (!mounted) return;
         setState(() {
           jobs = [];
+          _applicants = [];
           _error = null;
           _isLoading = false;
         });
@@ -104,15 +116,79 @@ class _ManageJobListingsState extends State<ManageJobListings> {
     }
   }
 
+  Future<void> _fetchApplicantsForAllJobs() async {
+    final aggregated = <Map<String, dynamic>>[];
+
+    for (final job in jobs) {
+      final rawId = job['_id'] ?? job['id'] ?? '';
+      final jobId = rawId.toString();
+      if (jobId.isEmpty) continue;
+
+      final jobTitle = (job['jobTitle'] ?? job['title'] ?? '').toString();
+      final jobStatus = (job['status'] ?? 'Active').toString();
+
+      try {
+        final uri = Uri.parse(
+          'http://13.203.67.154:3000/api/jobs/applied-jobs/specific-jobs/$jobId',
+        );
+        final response = await http.get(uri);
+
+        if (response.statusCode != 200) continue;
+
+        final body = response.body.trimLeft();
+        dynamic decoded;
+        try {
+          decoded = jsonDecode(body);
+        } catch (_) {
+          decoded = [];
+        }
+
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        final list = data is List
+            ? data
+            : (data is Map && data['applications'] is List
+                ? data['applications']
+                : <dynamic>[]);
+
+        for (final item in list) {
+          if (item is! Map) continue;
+          final m = item;
+          final rawApplicant = m['applicant'] is Map
+              ? m['applicant'] as Map
+              : m;
+          final applicantMap =
+              Map<String, dynamic>.from(rawApplicant as Map);
+          applicantMap['jobId'] = jobId;
+          applicantMap['jobTitle'] = jobTitle;
+          applicantMap['jobStatus'] = jobStatus;
+          aggregated.add(applicantMap);
+        }
+      } catch (_) {
+        // Ignore errors per job; other jobs may still have applicants
+        continue;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _applicants = aggregated;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // filter jobs by tab index (0 -> Active, 1 -> Closed)
-    final List<Map<String, dynamic>> filteredJobs = jobs
+    // Filter applicants by tab (Active / Closed) based on parent job status
+    final List<Map<String, dynamic>> filteredApplicants = _applicants
         .where(
-          (j) =>
-              tabIndex == 0
-                  ? (j["status"]?.toString().toLowerCase() ?? 'active') != 'closed'
-                  : (j["status"]?.toString().toLowerCase() ?? '') == 'closed',
+          (a) {
+            final status =
+                (a['jobStatus'] ?? 'Active').toString().toLowerCase();
+            return tabIndex == 0
+                ? status != 'closed'
+                : status == 'closed';
+          },
         )
         .toList();
 
@@ -228,7 +304,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
               const SizedBox(height: 20),
 
               Text(
-                "${filteredJobs.length} Results",
+                "${filteredApplicants.length} Results",
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
@@ -251,18 +327,19 @@ class _ManageJobListingsState extends State<ManageJobListings> {
                     style: const TextStyle(color: Colors.redAccent),
                   ),
                 )
-              else if (filteredJobs.isEmpty)
+              else if (filteredApplicants.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Text(
-                    'No jobs found',
+                    'No applicants found',
                     style: TextStyle(color: Colors.black54),
                   ),
                 )
               else
-                // ---------- JOB LIST ----------
+                // ---------- APPLICANTS LIST ----------
                 Column(
-                  children: filteredJobs.map((job) => _jobCard(job)).toList(),
+                  children:
+                      filteredApplicants.map((app) => _buildApplicantCard(app)).toList(),
                 ),
             ],
           ),
@@ -274,6 +351,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
   Future<void> _viewApplicantsForJob(Map<String, dynamic> job) async {
     final rawId = job['_id'] ?? job['id'] ?? '';
     final jobId = rawId.toString();
+    final jobTitle = (job['jobTitle'] ?? job['title'] ?? '').toString();
     if (jobId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Job id not found for this listing.')),
@@ -321,6 +399,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
           MaterialPageRoute(
             builder: (context) => ApplicantsListPage(
               jobId: jobId,
+              jobTitle: jobTitle,
               applicants: applicants,
             ),
           ),
@@ -544,6 +623,60 @@ class _ManageJobListingsState extends State<ManageJobListings> {
           Text(text, style: const TextStyle(color: Colors.blue, fontSize: 13)),
         ],
       ),
+    );
+  }
+
+  // ----------- APPLICANT CARD BUILDER ----------
+  Widget _buildApplicantCard(Map<String, dynamic> a) {
+    final firstName = (a['firstName'] ?? a['name'] ?? '').toString();
+    final lastName = (a['lastName'] ?? '').toString();
+    final name = [firstName, lastName]
+        .where((s) => s.isNotEmpty)
+        .join(' ')
+        .trim();
+
+    final jobTitle = (a['jobTitle'] ?? '').toString();
+    final location = (a['location'] ?? '').toString();
+    final status = (a['status'] ?? '').toString();
+    final createdRaw = (a['createdAt'] ?? a['appliedOn'] ?? '').toString();
+    final appliedOn = createdRaw.contains('T')
+        ? createdRaw.split('T').first
+        : createdRaw;
+
+    Color tagColor;
+    switch (status.toLowerCase()) {
+      case 'shortlisted':
+        tagColor = Colors.green;
+        break;
+      case 'rejected':
+        tagColor = Colors.redAccent;
+        break;
+      default:
+        tagColor = Colors.blue;
+    }
+
+    return ApplicantCard(
+      name: name.isNotEmpty ? name : 'Unknown',
+      role: jobTitle.isNotEmpty ? jobTitle : 'Applied Position',
+      location: location,
+      qualification:
+          appliedOn.isNotEmpty ? 'Applied on $appliedOn' : 'Applied date N/A',
+      currentRole: '',
+      tag: status.isNotEmpty ? status : 'N/A',
+      tagColor: tagColor,
+      imagePath: '',
+      onReviewTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ApplicantProfilePage(
+              applicant: a,
+              jobId: (a['jobId'] ?? '').toString(),
+            ),
+          ),
+        );
+      },
+      onViewProfileTap: () {},
     );
   }
 }

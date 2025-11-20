@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:doc/model/doctor_profile_data.dart';
+import 'package:doc/model/api_service.dart';
+import 'package:doc/hospital/Interviewpage.dart';
 
 class JobDetailScreen extends StatelessWidget {
   final Map<String, dynamic> job;
@@ -481,11 +484,13 @@ class JobDetailScreen extends StatelessWidget {
 // ----------------- ApplicantsListPage -----------------
 class ApplicantsListPage extends StatelessWidget {
   final String jobId;
+  final String jobTitle;
   final List<Map<String, dynamic>> applicants;
 
   const ApplicantsListPage({
     super.key,
     required this.jobId,
+    required this.jobTitle,
     required this.applicants,
   });
 
@@ -493,7 +498,7 @@ class ApplicantsListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Applicants for $jobId"),
+        title: Text("Applicants for ${jobTitle.isNotEmpty ? jobTitle : jobId}"),
         backgroundColor: Colors.blue,
       ),
       body: ListView.separated(
@@ -548,12 +553,7 @@ class ApplicantsListPage extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (_) => ApplicantProfilePage(
                     applicant: a,
-                    qualification: '',
-                    currentRole: '',
-                    imagePath: '',
-                    role: '',
-                    location: '',
-                    name: '',
+                    jobId: jobId,
                   ),
                 ),
               );
@@ -566,87 +566,226 @@ class ApplicantsListPage extends StatelessWidget {
 }
 
 // ----------------- ApplicantProfilePage -----------------
-class ApplicantProfilePage extends StatelessWidget {
+class ApplicantProfilePage extends StatefulWidget {
   final Map<String, dynamic> applicant;
+  final String? jobId;
 
   const ApplicantProfilePage({
     super.key,
     required this.applicant,
-    required String qualification,
-    required String currentRole,
-    required String imagePath,
-    required String role,
-    required String location,
-    required String name,
+    this.jobId,
   });
+
+  @override
+  State<ApplicantProfilePage> createState() => _ApplicantProfilePageState();
+}
+
+class _ApplicantProfilePageState extends State<ApplicantProfilePage> {
+  bool _isLoadingProfile = true;
+  DoctorProfileData? _profile;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profileId =
+          (widget.applicant['surgeonprofile_id'] ?? '').toString().trim();
+      if (profileId.isEmpty) {
+        setState(() {
+          _isLoadingProfile = false;
+        });
+        return;
+      }
+
+      final result = await ApiService.fetchProfileInfo(profileId);
+      if (result['success'] == true) {
+        setState(() {
+          _profile = DoctorProfileData.fromMap(result['data']);
+          _isLoadingProfile = false;
+        });
+      } else {
+        setState(() {
+          _error = result['message'] ?? 'Failed to load profile';
+          _isLoadingProfile = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Error loading profile: $e';
+        _isLoadingProfile = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final firstName =
-        (applicant['firstName'] ?? applicant['name'] ?? '').toString();
-    final lastName = (applicant['lastName'] ?? '').toString();
-    final fullName = [firstName, lastName]
+        (widget.applicant['firstName'] ?? widget.applicant['name'] ?? '')
+            .toString();
+    final lastName = (widget.applicant['lastName'] ?? '').toString();
+    final fullNameFromApp = [firstName, lastName]
         .where((s) => s.isNotEmpty)
         .join(' ')
         .trim();
-    final createdRaw = (applicant['createdAt'] ?? applicant['appliedOn'] ?? '')
-        .toString();
+
+    final createdRaw =
+        (widget.applicant['createdAt'] ?? widget.applicant['appliedOn'] ?? '')
+            .toString();
     final appliedOn = createdRaw.contains('T')
         ? createdRaw.split('T').first
         : createdRaw;
-    final status = (applicant['status'] ?? '').toString();
-    final resume = (applicant['cvResume'] ?? applicant['resume'] ?? '').toString();
-    final experience = (applicant['experience'] ?? '').toString();
+    final status = (widget.applicant['status'] ?? '').toString();
+    final resume =
+        (widget.applicant['cvResume'] ?? widget.applicant['resume'] ?? '')
+            .toString();
+    final location = (widget.applicant['location'] ?? '').toString();
+    final notes = (widget.applicant['notes'] ?? '').toString();
+
+    if (_isLoadingProfile) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null && _profile == null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title:
+              const Text("Applicant Profile", style: TextStyle(color: Colors.black)),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(_error ?? 'Profile not found'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final profile = _profile;
+    final displayName =
+        profile != null && profile.name.isNotEmpty ? profile.name : fullNameFromApp;
+    final speciality = profile?.speciality ?? '';
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(fullName.isNotEmpty ? fullName : 'Applicant'),
-        backgroundColor: Colors.blue,
+        title: const Text(
+          "Applicant Profile",
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  child: Text(
-                    fullName.isNotEmpty ? fullName[0] : '?',
+            Center(
+              child: CircleAvatar(
+                radius: 60,
+                backgroundColor: Colors.blueAccent.withOpacity(0.1),
+                child: const Icon(Icons.person, size: 50, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    displayName.isNotEmpty ? displayName : 'Applicant Name',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fullName.isNotEmpty ? fullName : 'Unknown',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  const SizedBox(height: 6),
+                  Text(
+                    speciality.isNotEmpty
+                        ? speciality
+                        : 'Speciality not provided',
+                    style: const TextStyle(
+                      color: Colors.black54,
+                      fontSize: 16,
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      experience.isNotEmpty ? experience : 'Experience N/A',
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
-            Text(
-              "Applied On: ${appliedOn.isNotEmpty ? appliedOn : 'N/A'}",
-              style: const TextStyle(color: Colors.black54),
+            const Divider(),
+
+            _infoHeader("Personal Information"),
+            _infoTile(Icons.call, "Phone", profile?.phone),
+            _infoTile(Icons.email, "Email", profile?.email),
+            _infoTile(Icons.location_on, "Location",
+                profile?.location.isNotEmpty == true ? profile!.location : location),
+
+            const SizedBox(height: 10),
+            _infoHeader("Professional Details"),
+            _infoTile(Icons.school, "Degree", profile?.degree),
+            _infoTile(Icons.work_outline, "Sub-Speciality", profile?.subSpeciality),
+            _infoTile(Icons.apartment, "Organization", profile?.organization),
+            _infoTile(Icons.badge_outlined, "Designation", profile?.designation),
+            _infoTile(Icons.location_city, "Work Location", profile?.workLocation),
+            _infoTile(Icons.calendar_today, "Experience", profile?.period),
+            _infoTile(Icons.link, "Portfolio", profile?.portfolio),
+
+            const SizedBox(height: 16),
+            _infoHeader("Summary"),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Text(
+                profile != null && profile.summary.isNotEmpty
+                    ? profile.summary
+                    : "No summary provided",
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.black87,
+                  height: 1.4,
+                ),
+              ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              "Status: ${status.isNotEmpty ? status : 'N/A'}",
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 20),
-            const Text("Resume", style: TextStyle(fontWeight: FontWeight.bold)),
+
+            const SizedBox(height: 16),
+            _infoHeader("Application Details"),
+            _infoTile(Icons.event,
+                "Applied On", appliedOn.isNotEmpty ? appliedOn : 'N/A'),
+            _infoTile(Icons.info_outline,
+                "Status", status.isNotEmpty ? status : 'N/A'),
+            _infoTile(Icons.notes, "Notes", notes.isNotEmpty ? notes : null),
+
+            const SizedBox(height: 10),
+            const Text("Resume",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
             ListTile(
               tileColor: const Color(0xfff8f9ff),
@@ -663,29 +802,95 @@ class ApplicantProfilePage extends StatelessWidget {
                 const SnackBar(content: Text('Opening resume...')),
               ),
             ),
-            const Spacer(),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Shortlisted')),
+
+            const SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ScheduleInterviewPage(
+                        jobId: widget.jobId,
+                        candidateId: (widget.applicant['surgeonprofile_id'] ?? '')
+                            .toString(),
+                      ),
                     ),
-                    child: const Text("Shortlist"),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Rejected')),
+                child: const Text(
+                  'Schedule Interview',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
                   ),
-                  child: const Text("Reject"),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 6),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Colors.blueAccent,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoTile(IconData icon, String label, String? value) {
+    if (value == null || value.isEmpty) return const SizedBox();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Colors.blueAccent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -733,6 +938,7 @@ class ApplicantsOverview extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (_) => ApplicantsListPage(
                                   jobId: e.key,
+                                  jobTitle: e.key,
                                   applicants: e.value,
                                 ),
                               ),
@@ -780,115 +986,6 @@ class InterviewsPlaceholder extends StatelessWidget {
             child: const Text("Schedule Interview (global)"),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ----------------- ScheduleInterviewPage -----------------
-class ScheduleInterviewPage extends StatefulWidget {
-  final String? jobId;
-  final String? candidateId;
-  const ScheduleInterviewPage({super.key, this.jobId, this.candidateId});
-
-  @override
-  State<ScheduleInterviewPage> createState() => _ScheduleInterviewPageState();
-}
-
-class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
-  DateTime? pickedDate;
-  TimeOfDay? pickedTime;
-  final TextEditingController noteController = TextEditingController();
-
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final d = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: DateTime(now.year + 1),
-    );
-    if (d != null) setState(() => pickedDate = d);
-  }
-
-  Future<void> _pickTime() async {
-    final t = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (t != null) setState(() => pickedTime = t);
-  }
-
-  void _submit() {
-    if (pickedDate == null || pickedTime == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please pick date & time')));
-      return;
-    }
-    final scheduled = DateTime(
-      pickedDate!.year,
-      pickedDate!.month,
-      pickedDate!.day,
-      pickedTime!.hour,
-      pickedTime!.minute,
-    );
-    // Mock: show confirmation
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Interview Scheduled'),
-        content: Text(
-          'Interview scheduled on ${scheduled.toString()}.\nNote: ${noteController.text}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final title = widget.jobId != null
-        ? 'Schedule Interview for ${widget.jobId}'
-        : 'Schedule Interview';
-    return Scaffold(
-      appBar: AppBar(title: Text(title), backgroundColor: Colors.blue),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Select Date'),
-              subtitle: Text(
-                pickedDate == null
-                    ? 'Not chosen'
-                    : pickedDate!.toLocal().toString().split(' ')[0],
-              ),
-              onTap: _pickDate,
-            ),
-            ListTile(
-              leading: const Icon(Icons.access_time),
-              title: const Text('Select Time'),
-              subtitle: Text(
-                pickedTime == null ? 'Not chosen' : pickedTime!.format(context),
-              ),
-              onTap: _pickTime,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteController,
-              decoration: const InputDecoration(labelText: 'Note (optional)'),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(onPressed: _submit, child: const Text('Schedule')),
-          ],
-        ),
       ),
     );
   }
