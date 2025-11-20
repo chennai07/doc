@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:doc/hospital/Myjobsscreen.dart' as myjobs_screen;
 import 'package:doc/hospital/myJobsPage.dart' as postjob_screen;
+import 'package:doc/hospital/ManageJobListings.dart';
 import 'package:doc/healthcare/hospital_profile.dart';
 
 class Navbar extends StatefulWidget {
@@ -31,7 +32,7 @@ class _NavbarState extends State<Navbar> {
         healthcareId: healthcareId,
         onHospitalNameTap: _openHospitalProfile,
       ),
-      const ApplicantsPage(),
+      const ManageJobListings(),
       postjob_screen.MyJobsPage(
         healthcareId: healthcareId,
         onHospitalNameTap: _openHospitalProfile,

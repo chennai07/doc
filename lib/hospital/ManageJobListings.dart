@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:doc/utils/session_manager.dart';
 import 'package:doc/hospital/JobDetailsScreen.dart';
 
 class ManageJobListings extends StatefulWidget {
@@ -13,99 +14,95 @@ class ManageJobListings extends StatefulWidget {
 
 class _ManageJobListingsState extends State<ManageJobListings> {
   int tabIndex = 0;
-
   // ---------- JOBS (mock data) ----------
-  final List<Map<String, dynamic>> jobs = [
-    {
-      "id": "JD003",
-      "title": "Consultant Neurosurgeon",
-      "status": "Active",
-      "department": "Neurosurgery",
-      "specialization": "Spinal Surgery",
-      "experience": "5+ years",
-      "deadline": "17-Nov-2025",
-      "applicants": 3,
-      "type": "Full time",
-      "location": "Bangalore",
-      "ago": "5 days ago",
-    },
-    {
-      "id": "JD0123",
-      "title": "Consultant Neurosurgeon - Night Shift",
-      "status": "Active",
-      "department": "Neurosurgery",
-      "specialization": "Spinal Surgery",
-      "experience": "7+ years",
-      "deadline": "20-Nov-2025",
-      "applicants": 1,
-      "type": "Full time",
-      "location": "Chennai",
-      "ago": "2 days ago",
-    },
-    {
-      "id": "JD004",
-      "title": "Associate Neurosurgeon",
-      "status": "Closed",
-      "department": "Neurosurgery",
-      "specialization": "Brain Tumor",
-      "experience": "3+ years",
-      "deadline": "01-Nov-2025",
-      "applicants": 5,
-      "type": "Part time",
-      "location": "Bangalore",
-      "ago": "15 days ago",
-    },
-  ];
+  List<Map<String, dynamic>> jobs = [];
 
   // ---------- APPLICANTS BY JOB ID (mock data) ----------
-  final Map<String, List<Map<String, dynamic>>> applicantsByJobId = {
-    "JD003": [
-      {
-        "id": "A001",
-        "name": "Dr. Rajesh Kumar",
-        "experience": "6 years",
-        "appliedOn": "10-Nov-2025",
-        "status": "New",
-        "resume": "Resume.pdf",
-      },
-      {
-        "id": "A002",
-        "name": "Dr. Meera Nair",
-        "experience": "8 years",
-        "appliedOn": "11-Nov-2025",
-        "status": "Shortlisted",
-        "resume": "Resume.pdf",
-      },
-      {
-        "id": "A003",
-        "name": "Dr. Arjun Bala",
-        "experience": "5 years",
-        "appliedOn": "12-Nov-2025",
-        "status": "Rejected",
-        "resume": "Resume.pdf",
-      },
-    ],
-    "JD0123": [
-      {
-        "id": "A004",
-        "name": "Dr. Kavya R",
-        "experience": "7 years",
-        "appliedOn": "13-Nov-2025",
-        "status": "New",
-        "resume": "Resume.pdf",
-      },
-    ],
-    "JD004": [
-      {
-        "id": "A005",
-        "name": "Dr. Sandeep",
-        "experience": "4 years",
-        "appliedOn": "20-Oct-2025",
-        "status": "New",
-        "resume": "Resume.pdf",
-      },
-    ],
-  };
+  final Map<String, List<Map<String, dynamic>>> applicantsByJobId = {};
+
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchJobs();
+  }
+
+  Future<void> _fetchJobs() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final storedId =
+          (await SessionManager.getHealthcareId()) ?? await SessionManager.getProfileId() ?? '';
+
+      if (storedId.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _error = 'Healthcare id not found';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final uri = Uri.parse(
+          'http://13.203.67.154:3000/api/healthcare/joblist-healthcare/$storedId');
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final body = response.body.trimLeft();
+        dynamic decoded;
+        try {
+          decoded = jsonDecode(body);
+        } catch (_) {
+          decoded = {};
+        }
+
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        final list = data is List
+            ? data
+            : (data is Map && data['jobs'] is List ? data['jobs'] : <dynamic>[]);
+
+        final fetchedJobs = <Map<String, dynamic>>[];
+        for (final item in list) {
+          if (item is Map) {
+            fetchedJobs.add(Map<String, dynamic>.from(item as Map));
+          }
+        }
+
+        if (!mounted) return;
+        setState(() {
+          jobs = fetchedJobs;
+          _isLoading = false;
+        });
+      } else if (response.statusCode == 404) {
+        // No jobs found – treat as empty list, not an error
+        if (!mounted) return;
+        setState(() {
+          jobs = [];
+          _error = null;
+          _isLoading = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _error = 'Failed to load jobs (${response.statusCode})';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Error loading jobs: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +110,9 @@ class _ManageJobListingsState extends State<ManageJobListings> {
     final List<Map<String, dynamic>> filteredJobs = jobs
         .where(
           (j) =>
-              tabIndex == 0 ? j["status"] == "Active" : j["status"] == "Closed",
+              tabIndex == 0
+                  ? (j["status"]?.toString().toLowerCase() ?? 'active') != 'closed'
+                  : (j["status"]?.toString().toLowerCase() ?? '') == 'closed',
         )
         .toList();
 
@@ -237,11 +236,34 @@ class _ManageJobListingsState extends State<ManageJobListings> {
               ),
 
               const SizedBox(height: 16),
-
-              // ---------- JOB LIST ----------
-              Column(
-                children: filteredJobs.map((job) => _jobCard(job)).toList(),
-              ),
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                )
+              else if (filteredJobs.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    'No jobs found',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                )
+              else
+                // ---------- JOB LIST ----------
+                Column(
+                  children: filteredJobs.map((job) => _jobCard(job)).toList(),
+                ),
             ],
           ),
         ),
@@ -353,6 +375,21 @@ class _ManageJobListingsState extends State<ManageJobListings> {
 
   // ----------- JOB CARD ----------
   Widget _jobCard(Map<String, dynamic> job) {
+    final jobId = (job['_id'] ?? job['id'] ?? '').toString();
+    final title = (job['jobTitle'] ?? job['title'] ?? '').toString();
+    final department = (job['department'] ?? '').toString();
+    final specialization = (job['subSpeciality'] ?? job['specialization'] ?? '').toString();
+    final experience = (job['experience'] ?? '').toString();
+    final deadline = (job['deadline'] ?? '').toString();
+    final status = (job['status'] ?? 'Active').toString();
+    final type = (job['jobType'] ?? job['type'] ?? '').toString();
+    final location = (job['location'] ?? '').toString();
+    final createdRaw = (job['createdAt'] ?? job['postedOn'] ?? '').toString();
+    final ago = createdRaw.contains('T')
+        ? createdRaw.split('T').first
+        : createdRaw;
+    final applicantsCount = (job['applicants'] ?? job['applicationsCount'] ?? '').toString();
+
     return GestureDetector(
       onTap: () {
         // navigate to detail and pass callbacks to modify state
@@ -361,22 +398,22 @@ class _ManageJobListingsState extends State<ManageJobListings> {
           MaterialPageRoute(
             builder: (context) => JobDetailScreen(
               job: job,
-              onEdit: (updated) {
+              onEdit: (updatedJob) {
                 // update job in list
                 setState(() {
-                  final idx = jobs.indexWhere((j) => j['id'] == job['id']);
-                  if (idx != -1) jobs[idx] = {...jobs[idx], ...updated};
+                  final idx = jobs.indexWhere((j) => j['_id'] == job['_id']);
+                  if (idx != -1) jobs[idx] = {...jobs[idx], ...updatedJob};
                 });
               },
               onClose: () {
                 setState(() {
-                  final idx = jobs.indexWhere((j) => j['id'] == job['id']);
+                  final idx = jobs.indexWhere((j) => j['_id'] == job['_id']);
                   if (idx != -1) jobs[idx]['status'] = 'Closed';
                 });
               },
               onDelete: () {
                 setState(() {
-                  jobs.removeWhere((j) => j['id'] == job['id']);
+                  jobs.removeWhere((j) => j['_id'] == job['_id']);
                 });
                 Navigator.pop(context); // close detail page after delete
               },
@@ -414,7 +451,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
                     style: const TextStyle(color: Colors.black87),
                     children: [
                       TextSpan(
-                        text: job["id"],
+                        text: jobId,
                         style: const TextStyle(
                           color: Colors.blue,
                           fontWeight: FontWeight.w600,
@@ -423,7 +460,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
                     ],
                   ),
                 ),
-                Text(job["ago"], style: const TextStyle(color: Colors.black54)),
+                Text(ago, style: const TextStyle(color: Colors.black54)),
               ],
             ),
 
@@ -439,17 +476,17 @@ class _ManageJobListingsState extends State<ManageJobListings> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        job["title"],
+                        title,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       Text(
-                        job["status"],
+                        status,
                         style: TextStyle(
                           fontSize: 13,
-                          color: job["status"] == "Active"
+                          color: status.toLowerCase() == "active"
                               ? Colors.green
                               : Colors.red,
                           fontWeight: FontWeight.w600,
@@ -463,14 +500,14 @@ class _ManageJobListingsState extends State<ManageJobListings> {
 
             const SizedBox(height: 12),
 
-            Text("Department: ${job["department"]}"),
-            Text("Specialization: ${job["specialization"]}"),
-            Text("Experience: ${job["experience"]}"),
+            Text("Department: $department"),
+            Text("Specialization: $specialization"),
+            Text("Experience: $experience"),
 
             const SizedBox(height: 8),
 
             Text(
-              "Application Deadline: ${job["deadline"]}",
+              "Application Deadline: $deadline",
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
 
@@ -478,11 +515,12 @@ class _ManageJobListingsState extends State<ManageJobListings> {
 
             Row(
               children: [
-                _chip(Icons.group, "${job["applicants"]} Applicants"),
+                _chip(Icons.group,
+                    applicantsCount.isNotEmpty ? "$applicantsCount Applicants" : "Applicants"),
                 const SizedBox(width: 10),
-                _chip(Icons.access_time_filled, job["type"]),
+                _chip(Icons.access_time_filled, type.isNotEmpty ? type : 'Full time'),
                 const SizedBox(width: 10),
-                _chip(Icons.location_on, job["location"]),
+                _chip(Icons.location_on, location),
               ],
             ),
           ],

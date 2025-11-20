@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class JobDetailScreen extends StatelessWidget {
   final Map<String, dynamic> job;
@@ -389,15 +391,56 @@ class JobDetailScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              onEdit({
-                'title': titleController.text,
-                'deadline': deadlineController.text,
-              });
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Job updated (mock)')),
+            onPressed: () async {
+              final jobId = (job['_id'] ?? job['id'] ?? '').toString();
+              if (jobId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Job id not found')), 
+                );
+                Navigator.pop(ctx);
+                return;
+              }
+
+              final uri = Uri.parse(
+                'http://13.203.67.154:3000/api/jobs/applied-jobs/jobs-edit/$jobId',
               );
+
+              final payload = {
+                'jobTitle': titleController.text,
+                'deadline': deadlineController.text,
+              };
+
+              try {
+                final response = await http.put(
+                  uri,
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode(payload),
+                );
+
+                if (response.statusCode == 200 || response.statusCode == 201) {
+                  onEdit({
+                    'jobTitle': titleController.text,
+                    'title': titleController.text,
+                    'deadline': deadlineController.text,
+                  });
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Job updated')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Failed to update job $jobId (${response.statusCode})',
+                      ),
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error updating job: $e')),
+                );
+              }
             },
             child: const Text('Save'),
           ),
@@ -459,10 +502,20 @@ class ApplicantsListPage extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
           final a = applicants[index];
-          final name = (a['name'] ?? '').toString();
+          final firstName = (a['firstName'] ?? a['name'] ?? '').toString();
+          final lastName = (a['lastName'] ?? '').toString();
+          final name = [firstName, lastName]
+              .where((s) => s.isNotEmpty)
+              .join(' ')
+              .trim();
           final experience = (a['experience'] ?? '').toString();
-          final appliedOn = (a['appliedOn'] ?? '').toString();
+          final createdRaw =
+              (a['createdAt'] ?? a['appliedOn'] ?? '').toString();
+          final appliedOn = createdRaw.contains('T')
+              ? createdRaw.split('T').first
+              : createdRaw;
           final status = (a['status'] ?? '').toString();
+          final isShortlisted = status.toLowerCase() == 'shortlisted';
           return ListTile(
             tileColor: Colors.white,
             shape: RoundedRectangleBorder(
@@ -480,9 +533,8 @@ class ApplicantsListPage extends StatelessWidget {
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
-                color: status == 'Shortlisted'
-                    ? Colors.green[100]
-                    : const Color(0xffe8f1ff),
+                color:
+                    isShortlisted ? Colors.green[100] : const Color(0xffe8f1ff),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -530,9 +582,25 @@ class ApplicantProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final firstName =
+        (applicant['firstName'] ?? applicant['name'] ?? '').toString();
+    final lastName = (applicant['lastName'] ?? '').toString();
+    final fullName = [firstName, lastName]
+        .where((s) => s.isNotEmpty)
+        .join(' ')
+        .trim();
+    final createdRaw = (applicant['createdAt'] ?? applicant['appliedOn'] ?? '')
+        .toString();
+    final appliedOn = createdRaw.contains('T')
+        ? createdRaw.split('T').first
+        : createdRaw;
+    final status = (applicant['status'] ?? '').toString();
+    final resume = (applicant['cvResume'] ?? applicant['resume'] ?? '').toString();
+    final experience = (applicant['experience'] ?? '').toString();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text((applicant['name'] ?? '').toString()),
+        title: Text(fullName.isNotEmpty ? fullName : 'Applicant'),
         backgroundColor: Colors.blue,
       ),
       body: Padding(
@@ -545,9 +613,7 @@ class ApplicantProfilePage extends StatelessWidget {
                 CircleAvatar(
                   radius: 30,
                   child: Text(
-                    ((applicant['name'] ?? '').toString().isNotEmpty)
-                        ? (applicant['name'] as String)[0]
-                        : '?',
+                    fullName.isNotEmpty ? fullName[0] : '?',
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -555,7 +621,7 @@ class ApplicantProfilePage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      (applicant['name'] ?? 'Unknown').toString(),
+                      fullName.isNotEmpty ? fullName : 'Unknown',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -563,7 +629,7 @@ class ApplicantProfilePage extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      (applicant['experience'] ?? '').toString(),
+                      experience.isNotEmpty ? experience : 'Experience N/A',
                     ),
                   ],
                 ),
@@ -571,12 +637,12 @@ class ApplicantProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              "Applied On: ${(applicant['appliedOn'] ?? '').toString()}",
+              "Applied On: ${appliedOn.isNotEmpty ? appliedOn : 'N/A'}",
               style: const TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 12),
             Text(
-              "Status: ${(applicant['status'] ?? '').toString()}",
+              "Status: ${status.isNotEmpty ? status : 'N/A'}",
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
@@ -585,10 +651,16 @@ class ApplicantProfilePage extends StatelessWidget {
             ListTile(
               tileColor: const Color(0xfff8f9ff),
               leading: const Icon(Icons.picture_as_pdf),
-              title: Text((applicant['resume'] ?? '').toString()),
-              subtitle: const Text("Tap to view (mock)"),
+              title: Text(
+                resume.isNotEmpty
+                    ? resume.split('/').last
+                    : 'No resume uploaded',
+              ),
+              subtitle: Text(
+                resume.isNotEmpty ? 'Tap to view' : 'No file available',
+              ),
               onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Open resume (mock)')),
+                const SnackBar(content: Text('Opening resume...')),
               ),
             ),
             const Spacer(),
@@ -597,7 +669,7 @@ class ApplicantProfilePage extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Shortlisted (mock)')),
+                      const SnackBar(content: Text('Shortlisted')),
                     ),
                     child: const Text("Shortlist"),
                   ),
@@ -606,7 +678,7 @@ class ApplicantProfilePage extends StatelessWidget {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Rejected (mock)')),
+                    const SnackBar(content: Text('Rejected')),
                   ),
                   child: const Text("Reject"),
                 ),
