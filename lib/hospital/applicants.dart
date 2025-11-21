@@ -93,29 +93,39 @@ class _ApplicantsState extends State<Applicants> {
         'http://13.203.67.154:3000/api/healthcare/jobpost',
       );
 
-      final payload = {
-        'healthcare_id': healthcareId,
+      final Map<String, String> payload = {
         'jobTitle': jobTitleCtrl.text.trim(),
         'department': department ?? '',
         'subSpeciality': subSpeciality ?? '',
         'jobType': jobType ?? '',
         'location': locationCtrl.text.trim(),
         'aboutRole': aboutCtrl.text.trim(),
-        'responsibilities': responsibilitiesCtrl.text.trim(),
-        'qualifications': qualificationCtrl.text.trim(),
-        'experience': experienceCtrl.text.trim(),
+        'keyResponsibilities': responsibilitiesCtrl.text.trim(),
+        'preferredQualifications': qualificationCtrl.text.trim(),
+        'minYearsOfExperience': experienceCtrl.text.trim(),
         'salaryRange': salaryCtrl.text.trim(),
         'interviewMode': interviewMode ?? '',
         'applicationDeadline': deadlineCtrl.text.trim(),
+        'healthcare_id': healthcareId,
+        // Status must match backend enum: ["job filled", "extended", "closed"].
+        // For new job posts we align with the Postman example and use "closed".
+        'status': 'closed',
       };
 
       print('🩺 jobpost healthcareId = ' + healthcareId);
       print('🩺 jobpost payload = ' + jsonEncode(payload));
 
+      // Attach auth token if available (backend may require authenticated request)
+      final token = await SessionManager.getToken();
+      final headers = <String, String>{};
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
       final resp = await http.post(
         uri,
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
+        headers: headers,
+        body: payload,
       );
 
       print('🩺 jobpost response status = ' + resp.statusCode.toString());
@@ -187,10 +197,13 @@ class _ApplicantsState extends State<Applicants> {
               value: subSpeciality,
               hint: "Sub-Speciality",
               items: [
+                // Must match backend enum exactly
+                // ["Spine Surgery", "Interventional Cardiology", "Brain Surgery", "Neuro Surgery", "Other"]
                 "Spine Surgery",
-                "Pediatric Cardiology",
+                "Interventional Cardiology",
                 "Brain Surgery",
-                "Neo Surgery",
+                "Neuro Surgery",
+                "Other",
               ],
               onChanged: (v) => setState(() => subSpeciality = v),
             ),

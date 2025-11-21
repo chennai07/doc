@@ -202,9 +202,36 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final rl = (role ?? '').toLowerCase().trim();
         if (rl.contains('hospital') || rl.contains('health') || rl.contains('org')) {
-          // Prefer previously saved healthcare_id; fallback to profileId for fetch only
+          // Prefer healthcare_id from current login response; then any stored healthcareId; finally fallback to profileId
+          String? healthcareIdFromResponse;
+          if (userData is Map) {
+            final raw = (userData['healthcare_id'] ??
+                    userData['healthcareId'] ??
+                    userData['healthcareID'])
+                ?.toString()
+                .trim();
+            if (raw != null && raw.isNotEmpty) healthcareIdFromResponse = raw;
+          }
+          if (healthcareIdFromResponse == null || healthcareIdFromResponse.isEmpty) {
+            if (data is Map) {
+              final raw = (data['healthcare_id'] ??
+                      data['healthcareId'] ??
+                      data['healthcareID'])
+                  ?.toString()
+                  .trim();
+              if (raw != null && raw.isNotEmpty) healthcareIdFromResponse = raw;
+            }
+          }
+
           final existingHid = await SessionManager.getHealthcareId();
-          final hid = (existingHid == null || existingHid.isEmpty) ? profileId : existingHid;
+          final hid = (healthcareIdFromResponse != null &&
+                  healthcareIdFromResponse.isNotEmpty)
+              ? healthcareIdFromResponse
+              : ((existingHid != null && existingHid.isNotEmpty)
+                  ? existingHid
+                  : profileId);
+
+          await SessionManager.saveHealthcareId(hid);
           try {
             final url = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/$hid');
             final resp = await http.get(url).timeout(const Duration(seconds: 15));
@@ -230,19 +257,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Profile exists but is empty/incomplete, go to form
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: profileId)),
+                  MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: hid)),
                 );
               }
             } else {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: profileId)),
+                MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: hid)),
               );
             }
           } catch (_) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: profileId)),
+              MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: hid)),
             );
           }
         } else if (rl.contains('surgeon') || rl.contains('doctor')) {

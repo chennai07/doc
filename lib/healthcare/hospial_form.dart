@@ -246,29 +246,33 @@ class _HospitalFormState extends State<HospitalForm> {
     );
 
     if (res['success'] == true) {
-      // Determine created healthcare profile id
+      // Try to extract the created hospital document ID from the response
       final addPayload = res['data'];
-      String createdId = '';
+      String targetId = widget.healthcareId;
       if (addPayload is Map<String, dynamic>) {
-        final maybeData = addPayload['data'];
-        if (maybeData is Map<String, dynamic>) {
-          createdId = (maybeData['_id'] ?? maybeData['id'] ?? '').toString();
+        final inner = addPayload['data'];
+        if (inner is Map<String, dynamic>) {
+          final raw = (inner['_id'] ?? inner['id'] ?? inner['healthcare_id'])?.toString().trim();
+          if (raw != null && raw.isNotEmpty) targetId = raw;
         } else {
-          createdId = (addPayload['_id'] ?? addPayload['id'] ?? '').toString();
+          final raw = (addPayload['_id'] ?? addPayload['id'] ?? addPayload['healthcare_id'])
+              ?.toString()
+              .trim();
+          if (raw != null && raw.isNotEmpty) targetId = raw;
         }
       }
-      final targetId = (createdId.isNotEmpty) ? createdId : widget.healthcareId;
-      if (createdId.isNotEmpty) {
-        await SessionManager.saveHealthcareId(createdId);
-      }
-      // Fetch profile and show
+
+      // Persist the resolved hospital ID for future sessions (job posts, listings, etc.)
+      await SessionManager.saveHealthcareId(targetId);
+
+      // Fetch profile using this hospital ID and navigate to dashboard
       final prof = await _fetchHealthcareProfile(targetId);
       if (prof['success'] == true) {
         final payload = prof['data'];
         final normalized = (payload is Map<String, dynamic>)
             ? (payload['data'] is Map<String, dynamic> ? payload['data'] : payload)
             : <String, dynamic>{};
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => Navbar(hospitalData: normalized),

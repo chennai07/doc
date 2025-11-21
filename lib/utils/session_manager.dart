@@ -92,6 +92,7 @@ class SessionManager {
     await prefs.remove(_keyToken);
     await prefs.remove(_keyLoginId);
     await prefs.remove(_keyRole);
+    await prefs.remove(_keyHealthcareId);
   }
 
   static Future<void> saveRole(String role) async {
