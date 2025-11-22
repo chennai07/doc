@@ -3,7 +3,7 @@ import 'package:doc/hospital/Myjobsscreen.dart' as myjobs_screen;
 import 'package:doc/hospital/myJobsPage.dart' as postjob_screen;
 import 'package:doc/hospital/ManageJobListings.dart';
 import 'package:doc/healthcare/hospital_profile.dart';
-import 'package:doc/hospital/Interviewpage.dart';
+import 'package:doc/hospital/scheduled_interviews.dart';
 
 class Navbar extends StatefulWidget {
   final Map<String, dynamic> hospitalData;
@@ -34,12 +34,12 @@ class _NavbarState extends State<Navbar> {
         healthcareId: healthcareId,
         onHospitalNameTap: _openHospitalProfile,
       ),
-      const ManageJobListings(),
+      ManageJobListings(hospitalData: widget.hospitalData),
       postjob_screen.MyJobsPage(
         healthcareId: healthcareId,
         onHospitalNameTap: _openHospitalProfile,
       ),
-      const ScheduleInterviewPage(),
+      ScheduledInterviewScreen(healthcareId: healthcareId),
     ];
   }
 

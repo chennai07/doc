@@ -5,9 +5,12 @@ import 'package:http/http.dart' as http;
 import 'package:doc/utils/session_manager.dart';
 import 'package:doc/hospital/JobDetailsScreen.dart';
 import 'package:doc/hospital/applicantcard.dart';
+import 'package:doc/healthcare/hospital_profile.dart';
 
 class ManageJobListings extends StatefulWidget {
-  const ManageJobListings({super.key});
+  final Map<String, dynamic>? hospitalData;
+  
+  const ManageJobListings({super.key, this.hospitalData});
 
   @override
   State<ManageJobListings> createState() => _ManageJobListingsState();
@@ -52,9 +55,13 @@ class _ManageJobListingsState extends State<ManageJobListings> {
         return;
       }
 
+      print('👥 Fetching jobs for healthcare_id: $storedId');
+
       final uri = Uri.parse(
           'http://13.203.67.154:3000/api/healthcare/joblist-healthcare/$storedId');
       final response = await http.get(uri);
+
+      print('👥 Jobs response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final body = response.body.trimLeft();
@@ -78,6 +85,8 @@ class _ManageJobListingsState extends State<ManageJobListings> {
             fetchedJobs.add(Map<String, dynamic>.from(item as Map));
           }
         }
+
+        print('👥 Found ${fetchedJobs.length} jobs');
 
         if (!mounted) return;
         // First store jobs, then fetch applicants for all jobs
@@ -108,6 +117,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
         });
       }
     } catch (e) {
+      print('👥 Error: $e');
       if (!mounted) return;
       setState(() {
         _error = 'Error loading jobs: $e';
@@ -118,6 +128,8 @@ class _ManageJobListingsState extends State<ManageJobListings> {
 
   Future<void> _fetchApplicantsForAllJobs() async {
     final aggregated = <Map<String, dynamic>>[];
+
+    print('👥 Fetching applicants for ${jobs.length} jobs');
 
     for (final job in jobs) {
       final rawId = job['_id'] ?? job['id'] ?? '';
@@ -132,6 +144,8 @@ class _ManageJobListingsState extends State<ManageJobListings> {
           'http://13.203.67.154:3000/api/jobs/applied-jobs/specific-jobs/$jobId',
         );
         final response = await http.get(uri);
+
+        print('👥 Applicants for job $jobId: status ${response.statusCode}');
 
         if (response.statusCode != 200) continue;
 
@@ -171,6 +185,8 @@ class _ManageJobListingsState extends State<ManageJobListings> {
       }
     }
 
+    print('👥 Total applicants found: ${aggregated.length}');
+
     if (!mounted) return;
     setState(() {
       _applicants = aggregated;
@@ -179,18 +195,36 @@ class _ManageJobListingsState extends State<ManageJobListings> {
 
   @override
   Widget build(BuildContext context) {
+    // Get hospital name from hospitalData
+    final hospitalName = widget.hospitalData?['hospitalName']?.toString() ?? 
+                        widget.hospitalData?['name']?.toString() ?? 
+                        'Hospital';
+
+    print('👥 BUILD: Total applicants: ${_applicants.length}');
+    print('👥 BUILD: Current tab: $tabIndex (0=Active, 1=Closed)');
+    
+    // Log applicant details for debugging
+    for (var i = 0; i < _applicants.length; i++) {
+      final a = _applicants[i];
+      print('👥 Applicant $i: jobStatus="${a['jobStatus']}", jobTitle="${a['jobTitle']}"');
+    }
+
     // Filter applicants by tab (Active / Closed) based on parent job status
     final List<Map<String, dynamic>> filteredApplicants = _applicants
         .where(
           (a) {
             final status =
                 (a['jobStatus'] ?? 'Active').toString().toLowerCase();
-            return tabIndex == 0
+            final matches = tabIndex == 0
                 ? status != 'closed'
                 : status == 'closed';
+            print('👥 Filter: status="$status", tabIndex=$tabIndex, matches=$matches');
+            return matches;
           },
         )
         .toList();
+
+    print('👥 BUILD: Filtered applicants: ${filteredApplicants.length}');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -201,51 +235,67 @@ class _ManageJobListingsState extends State<ManageJobListings> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ---------- TOP HEADER ----------
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // keep asset image path same as yours
-                    Image.asset(
-                      "assets/logo.png",
-                      height: 40,
-                      width: 40,
-                      fit: BoxFit.contain,
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        "Apollo Hospitals",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
+              GestureDetector(
+                onTap: () {
+                  // Navigate to hospital profile
+                  if (widget.hospitalData != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HospitalProfile(
+                          data: widget.hospitalData!,
+                          showBottomBar: false,
                         ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.blue),
-                        borderRadius: BorderRadius.circular(12),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
-                      child: const Icon(
-                        Icons.notifications_none,
-                        color: Colors.blue,
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      // keep asset image path same as yours
+                      Image.asset(
+                        "assets/logo.png",
+                        height: 40,
+                        width: 40,
+                        fit: BoxFit.contain,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          hospitalName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(color: Colors.blue),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_none,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 

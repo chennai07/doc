@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:doc/utils/session_manager.dart';
 
 class ScheduleInterviewPage extends StatefulWidget {
   final String? jobId;
   final String? candidateId;
+  final String? healthcareId;
 
   const ScheduleInterviewPage({
     super.key,
     this.jobId,
     this.candidateId,
+    this.healthcareId,
   });
 
   @override
@@ -91,20 +94,59 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
       return;
     }
 
+    // Get healthcare_id
+    final healthcareId = widget.healthcareId ?? 
+                        await SessionManager.getHealthcareId() ?? 
+                        await SessionManager.getProfileId() ?? '';
+
+    if (healthcareId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Healthcare ID not found. Please log in again.')),
+      );
+      return;
+    }
+
+    print('📅 Scheduling interview with healthcare_id: $healthcareId');
+
+    // Convert date format from DD/MM/YYYY to ISO format
+    String isoDate = '';
+    try {
+      final parts = selectedDate.split('/');
+      if (parts.length == 3) {
+        final day = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final year = int.parse(parts[2]);
+        isoDate = DateTime(year, month, day).toIso8601String();
+      }
+    } catch (e) {
+      print('Error parsing date: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid date format')),
+      );
+      return;
+    }
+
     final uri = Uri.parse(
       'http://13.203.67.154:3000/api/interview/schedule-Interview',
     );
 
+    // Use the correct field names that the backend expects
     final payload = {
-      'jobId': widget.jobId,
-      'candidateId': widget.candidateId,
-      'date': selectedDate,
+      'job_id': widget.jobId ?? '',
+      'healthcare_id': healthcareId,
+      'surgeonprofile_id': widget.candidateId ?? '',
+      'interviewDate': isoDate,
       'startTime': startTime,
       'endTime': endTime,
-      'instructions': _instructionsController.text.trim(),
+      'additionalInstructions': _instructionsController.text.trim(),
       'coordinatorName': _coordinatorNameController.text.trim(),
       'coordinatorPhone': _coordinatorPhoneController.text.trim(),
+      'confirmAgreement': confirm,
     };
+
+    print('📅 Payload: ${jsonEncode(payload)}');
 
     try {
       final response = await http.post(
@@ -113,23 +155,31 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
         body: jsonEncode(payload),
       );
 
+      print('📅 Response status: ${response.statusCode}');
+      print('📅 Response body: ${response.body}');
+
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Interview scheduled successfully.')),
+          const SnackBar(content: Text('✅ Interview scheduled successfully!')),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true); // Return true to indicate success
       } else {
+        String errorMsg = 'Failed to schedule interview (${response.statusCode})';
+        try {
+          final data = jsonDecode(response.body);
+          if (data is Map && data['message'] != null) {
+            errorMsg = data['message'].toString();
+          }
+        } catch (_) {}
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to schedule interview (${response.statusCode})',
-            ),
-          ),
+          SnackBar(content: Text(errorMsg)),
         );
       }
     } catch (e) {
+      print('📅 Error: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error scheduling interview: $e')),
