@@ -83,6 +83,23 @@ class _SearchScreenState extends State<SearchScreen> {
             }
           }
 
+          final rawApplicants = m['applicants'] ?? m['applicationsCount'];
+          final applicantsLabel = rawApplicants == null
+              ? ''
+              : '${rawApplicants.toString()} Applicants';
+
+          final rawExperience =
+              m['experience'] ?? m['minYearsOfExperience'];
+          String experienceLabel = '';
+          if (rawExperience != null) {
+            final value = rawExperience.toString().trim();
+            if (value.isNotEmpty) {
+              // e.g. "5" -> "5 Years"
+              experienceLabel =
+                  value.contains('year') ? value : '$value Years';
+            }
+          }
+
           jobs.add({
             'id': (m['_id'] ?? m['id'] ?? '').toString(),
             'title': m['jobTitle']?.toString() ?? '',
@@ -91,13 +108,16 @@ class _SearchScreenState extends State<SearchScreen> {
                 m['healthcareOrganization']?.toString() ??
                 '',
             'location': m['location']?.toString() ?? '',
-            'applicants': m['applicants'] != null
-                ? '${m['applicants']} Applicants'
-                : '',
+            'applicants': applicantsLabel,
             'logo': 'assets/logo2.png',
             'type': m['jobType']?.toString() ?? '',
             'speciality': m['department']?.toString() ??
                 m['subSpeciality']?.toString() ??
+                '',
+            // Nicely formatted experience text for JobCard chip
+            'experience': experienceLabel,
+            'description': m['aboutRole']?.toString() ??
+                m['description']?.toString() ??
                 '',
             'salary': salaryValue,
           });
@@ -241,7 +261,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     if (_hasActiveFilters()) _buildFilterChips(),
                     const SizedBox(height: 25),
 
-                    const SectionHeader(title: "Available Jobs"),
+                    SectionHeader(title: "${_filteredJobs.length} Results"),
                     const SizedBox(height: 10),
 
                     _filteredJobs.isEmpty
@@ -267,6 +287,10 @@ class _SearchScreenState extends State<SearchScreen> {
                                   location: job["location"],
                                   applicants: job["applicants"],
                                   logo: job["logo"],
+                                  speciality: job["speciality"] ?? '',
+                                  jobType: job["type"] ?? '',
+                                  experience: job["experience"] ?? '',
+                                  description: job["description"] ?? '',
                                   onTap: () {
                                     final id = (job['id'] ?? '').toString();
                                     if (id.isEmpty) {
@@ -509,10 +533,10 @@ class _SearchScreenState extends State<SearchScreen> {
             height: 45,
             width: 45,
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.background),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Iconsax.filter, color: AppColors.primary),
+            child: const Icon(Iconsax.filter, color: Colors.white),
           ),
         ),
         const SizedBox(width: 10),
@@ -520,7 +544,7 @@ class _SearchScreenState extends State<SearchScreen> {
           child: ElevatedButton(
             onPressed: _showFilterDialog,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundColor: const Color(0xFFD6EDFF),
               elevation: 0,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
@@ -528,7 +552,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
             child: const Text(
-              "Apply Filter",
+              "Modify Filter",
               style: TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,

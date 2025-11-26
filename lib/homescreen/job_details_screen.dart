@@ -521,6 +521,23 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final rawSalary = (_job?['salaryRange'] ?? '').toString();
+    final String salaryPillDisplay =
+        rawSalary.isNotEmpty ? '₹ $rawSalary LPA' : '';
+    final String salaryChipDisplay =
+        rawSalary.isNotEmpty ? '₹ $rawSalary' : '';
+
+    final rawDeadline = ((_job?['deadline'] ??
+                _job?['applicationDeadline'] ??
+                _job?['jobDeadline']) ?? '')
+            .toString()
+            .trim();
+    String deadlineDisplay = rawDeadline;
+    if (deadlineDisplay.contains('T')) {
+      deadlineDisplay = deadlineDisplay.split('T').first;
+    } else if (deadlineDisplay.contains(' ')) {
+      deadlineDisplay = deadlineDisplay.split(' ').first;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -550,15 +567,27 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
               : _job == null
                   ? const Center(child: Text('Job not found'))
                   : SingleChildScrollView(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
+                          const SizedBox(height: 8),
+                          Center(
+                            child: Image.asset(
+                              'assets/logo.png',
+                              height: 80,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           Text(
                             (_job!['jobTitle'] ?? '').toString(),
+                            textAlign: TextAlign.center,
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -567,21 +596,25 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                                     _job!['hospitalName'] ??
                                     '')
                                 .toString(),
+                            textAlign: TextAlign.center,
                             style: theme.textTheme.bodyMedium
                                 ?.copyWith(color: Colors.black54),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
                           Text(
                             (_job!['location'] ?? '').toString(),
+                            textAlign: TextAlign.center,
                             style: theme.textTheme.bodySmall
                                 ?.copyWith(color: Colors.grey[600]),
                           ),
+
                           const SizedBox(height: 16),
 
-                          // Meta info chips
+                          // Meta info chips (job type, department, speciality, salary)
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
+                            alignment: WrapAlignment.center,
                             children: [
                               if ((_job!['jobType'] ?? '').toString().isNotEmpty)
                                 _chip((_job!['jobType'] ?? '').toString()),
@@ -591,34 +624,147 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                                   .toString()
                                   .isNotEmpty)
                                 _chip((_job!['subSpeciality'] ?? '').toString()),
-                              if ((_job!['salaryRange'] ?? '').toString().isNotEmpty)
-                                _chip((_job!['salaryRange'] ?? '').toString()),
                             ],
                           ),
 
+                          const SizedBox(height: 20),
+
+                          // Full Time + Salary pill (Figma-style)
+                          Container(
+                            height: 70,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF0062FF), Color(0xFF3E8BFF)],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.work,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        (_job!['jobType'] ?? 'Full Time')
+                                            .toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 45,
+                                  color: Colors.white.withOpacity(0.4),
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.attach_money,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        salaryPillDisplay.isNotEmpty
+                                            ? salaryPillDisplay
+                                            : (_job!['salaryRange'] ?? '')
+                                                .toString(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
                           const SizedBox(height: 24),
-                          _sectionTitle('About Role'),
-                          _sectionBody(
-                              (_job!['aboutRole'] ?? '').toString().trim()),
 
-                          const SizedBox(height: 16),
-                          _sectionTitle('Key Responsibilities'),
-                          _sectionBody((_job!['keyResponsibilities'] ?? '')
-                              .toString()
-                              .trim()),
+                          // Detailed sections (left-aligned like Figma)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _sectionTitle('Department'),
+                                _sectionBody(
+                                  (_job!['department'] ?? '').toString().trim(),
+                                ),
+                                const SizedBox(height: 12),
 
-                          const SizedBox(height: 16),
-                          _sectionTitle('Preferred Qualifications'),
-                          _sectionBody((_job!['preferredQualifications'] ?? '')
-                              .toString()
-                              .trim()),
+                                _sectionTitle('Sub-speciality'),
+                                _sectionBody(
+                                  (_job!['subSpeciality'] ?? '')
+                                      .toString()
+                                      .trim(),
+                                ),
+                                const SizedBox(height: 12),
 
-                          const SizedBox(height: 16),
-                          _sectionTitle('Experience Required'),
-                          _sectionBody(
-                              'Minimum ${( _job!['minYearsOfExperience'] ?? '').toString()} years'),
+                                _sectionTitle('Interview Mode'),
+                                _sectionBody(
+                                  (_job!['interviewMode'] ?? 'In-person')
+                                      .toString()
+                                      .trim(),
+                                ),
+                                const SizedBox(height: 16),
 
-                          const SizedBox(height: 80),
+                                _sectionTitle('About Role'),
+                                _sectionBody(
+                                  (_job!['aboutRole'] ?? '')
+                                      .toString()
+                                      .trim(),
+                                ),
+                                const SizedBox(height: 16),
+
+                                _sectionTitle('Key Responsibilities'),
+                                _sectionBody(
+                                  (_job!['keyResponsibilities'] ?? '')
+                                      .toString()
+                                      .trim(),
+                                ),
+                                const SizedBox(height: 16),
+
+                                _sectionTitle('Preferred Qualifications'),
+                                _sectionBody(
+                                  (_job!['preferredQualifications'] ?? '')
+                                      .toString()
+                                      .trim(),
+                                ),
+                                const SizedBox(height: 16),
+
+                                _sectionTitle('Experience Required'),
+                                _sectionBody(
+                                  'Minimum ${( _job!['minYearsOfExperience'] ?? '').toString()} years',
+                                ),
+                                const SizedBox(height: 16),
+
+                                _sectionTitle('Application Deadline'),
+                                _sectionBody(
+                                  deadlineDisplay,
+                                ),
+                                const SizedBox(height: 80),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),

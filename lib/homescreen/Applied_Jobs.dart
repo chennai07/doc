@@ -68,12 +68,19 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
           if (item is! Map) continue;
           final m = item;
 
-          // A lot of applied-jobs APIs nest the job data inside a 'job' or 'jobProfile' key.
-          final rawJob = m['job'] is Map
-              ? m['job'] as Map
-              : (m['jobProfile'] is Map
-                  ? m['jobProfile'] as Map
-                  : m);
+          // A lot of applied-jobs APIs nest the job data inside
+          // m['job'] or m['jobProfile']['job']. Fall back to m itself.
+          Map rawJob;
+          if (m['job'] is Map) {
+            rawJob = m['job'] as Map;
+          } else if (m['jobProfile'] is Map &&
+              (m['jobProfile']['job'] is Map)) {
+            rawJob = m['jobProfile']['job'] as Map;
+          } else if (m['jobProfile'] is Map) {
+            rawJob = m['jobProfile'] as Map;
+          } else {
+            rawJob = m;
+          }
 
           // Try to derive a readable applied date from the wrapper object
           final rawDate = m['appliedAt'] ?? m['createdAt'] ?? m['updatedAt'] ?? '';
@@ -87,18 +94,43 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
             }
           }
 
+          final title = (rawJob['jobTitle'] ??
+                  rawJob['title'] ??
+                  rawJob['jobRole'] ??
+                  rawJob['role'] ??
+                  rawJob['position'])
+              ?.toString()
+              .trim();
+
+          final org = (rawJob['healthcareName'] ??
+                  rawJob['hospitalName'] ??
+                  rawJob['healthcareOrganization'] ??
+                  rawJob['organisation'] ??
+                  rawJob['organization'])
+              ?.toString()
+              .trim();
+
+          final desc = (rawJob['aboutRole'] ??
+                  rawJob['description'] ??
+                  rawJob['jobDescription'] ??
+                  rawJob['roleDescription'])
+              ?.toString()
+              .trim();
+
+          final statusValue = (m['status'] ??
+                  m['applicationStatus'] ??
+                  m['jobStatus'] ??
+                  rawJob['status'])
+              ?.toString()
+              .trim();
+
           jobs.add({
-            'title': rawJob['jobTitle']?.toString() ??
-                rawJob['title']?.toString() ??
-                rawJob['role']?.toString() ??
-                rawJob['position']?.toString() ??
-                '',
-            'org': rawJob['healthcareName']?.toString() ??
-                rawJob['hospitalName']?.toString() ??
-                rawJob['healthcareOrganization']?.toString() ??
-                '',
+            'title': title ?? '',
+            'org': org ?? '',
             'location': rawJob['location']?.toString() ?? '',
             'date': dateLabel,
+            'status': statusValue ?? '',
+            'description': desc ?? '',
           });
         }
 
@@ -124,83 +156,6 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  /// 🔹 Show confirmation dialog before deleting
-  void _showDeleteDialog(int index) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-        title: const Text(
-          "Remove Job?",
-          style: TextStyle(
-            color: AppColors.primary,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-        content: const Text(
-          "Are you sure you want to remove this job from your applied jobs list?",
-          style: TextStyle(
-            height: 1.4,
-            fontSize: 14,
-            color: Colors.black87,
-          ),
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(10, 10, 20, 10),
-        actions: [
-          /// CANCEL BUTTON
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              "Cancel",
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
-            ),
-          ),
-
-          /// DELETE BUTTON
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _deleteJob(index);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            ),
-            child: const Text(
-              "Remove",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 🔹 Delete a specific job
-  Future<void> _deleteJob(int index) async {
-    // For now, just remove from the local list (no backend delete endpoint provided)
-    setState(() {
-      appliedJobs.removeAt(index);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Job removed 🗑️"),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   @override
@@ -295,6 +250,21 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
                       itemCount: appliedJobs.length,
                       itemBuilder: (context, index) {
                         final job = appliedJobs[index];
+                        final String status =
+                            (job['status'] ?? 'Applied').toString();
+                        final String description =
+                            (job['description'] ?? '').toString();
+                        final String date = (job['date'] ?? '').toString();
+
+                        Color statusColor;
+                        if (status.toLowerCase().contains('interview')) {
+                          statusColor = Colors.green;
+                        } else if (status.toLowerCase().contains('reject')) {
+                          statusColor = Colors.redAccent;
+                        } else {
+                          statusColor = AppColors.primary;
+                        }
+
                         return Card(
                           elevation: 3,
                           margin: const EdgeInsets.only(bottom: 15),
@@ -306,24 +276,21 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                /// Job Info
+                                /// Top: icon + basic info
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    /// Logo/Icon
                                     CircleAvatar(
-                                      radius: 28,
+                                      radius: 24,
                                       backgroundColor:
-                                          AppColors.primary.withOpacity(0.1),
+                                          AppColors.primary.withOpacity(0.08),
                                       child: const Icon(
                                         Iconsax.briefcase,
                                         color: AppColors.primary,
-                                        size: 26,
+                                        size: 22,
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-
-                                    /// Job Details
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -369,60 +336,90 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
                                         ],
                                       ),
                                     ),
-
-                                    /// Delete Button
-                                    IconButton(
-                                      icon: const Icon(
-                                        Iconsax.trash,
-                                        color: Colors.redAccent,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => _showDeleteDialog(index),
-                                    ),
                                   ],
                                 ),
 
-                                /// Applied Date
-                                if (job['date'] != null &&
-                                    job['date'].toString().isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 68,
-                                      top: 8,
-                                    ),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.shade50,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: Colors.green.shade200,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Iconsax.tick_circle,
-                                            size: 14,
-                                            color: Colors.green.shade700,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            "Applied on ${job['date']}",
-                                            style: TextStyle(
-                                              color: Colors.green.shade700,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                /// Middle: short description
+                                if (description.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    description,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 13,
                                     ),
                                   ),
+                                ],
+
+                                /// Bottom row: applied date (left) + status pill (right)
+                                if (date.isNotEmpty || status.isNotEmpty) ...[
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      if (date.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade50,
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: Colors.green.shade200,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Iconsax.tick_circle,
+                                                size: 14,
+                                                color:
+                                                    Colors.green.shade700,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                "Applied on $date",
+                                                style: TextStyle(
+                                                  color:
+                                                      Colors.green.shade700,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      if (status.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                statusColor.withOpacity(0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            status,
+                                            style: TextStyle(
+                                              color: statusColor,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),
