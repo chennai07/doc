@@ -10,6 +10,103 @@ import 'package:doc/model/api_service.dart';
 import 'package:doc/profileprofile/surgeon_profile.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:doc/model/indian_states_districts.dart';
+ 
+const Map<String, List<String>> surgicalSpecialities = {
+  'General Surgery': [
+    'Lower GI Surgery',
+    'Laparoscopic Surgery',
+    'Trauma Surgery',
+    'Breast / Endocrine Surgery',
+    'Endocrine Surgery',
+    'Head and Neck Surgery',
+    'Musculoskeletal Surgery',
+  ],
+  'Cardiothoracic & Vascular Surgery': [
+    'Paediatric Cardiothoracic & Vascular Surgery',
+    'Thoracic Surgery',
+    'Vascular Surgery',
+    'Cardiac and Lung transplant',
+  ],
+  'Neurosurgery': [
+    'Spine Surgery',
+    'Cerebrovascular Surgery',
+    'Skull base surgery',
+    'Stereotactic radiosurgery',
+    'Pediatric Neurosurgery',
+    'Neuro-oncology',
+    'Functional and epilepsy Neurosurgery',
+    'Peripheral nerve surgery',
+  ],
+  'Orthopedic Surgery': [
+    'Hand Surgery',
+    'Sports Medicine',
+    'Arthroplasty (Joint Replacement)',
+    'Pediatric Orthopedics',
+    'Orthopaedic Oncology',
+    'Spine Surgery',
+    'Trauma Surgery',
+    'Arthroscopy',
+  ],
+  'ENT (Otorhinolaryngology) Surgery': [
+    'Otology and Neurotology',
+    'Rhinology',
+    'Laryngology',
+    'Head & Neck Surgery',
+    'Skull Base Surgery',
+  ],
+  'Ophthalmic Surgery': [
+    'Glaucoma',
+    'Corneal Surgery',
+    'Vitreo-retinal Surgery',
+    'Pediatric Ophthalmology',
+    'Refractive Surgery',
+  ],
+  'Urology': [
+    'Pediatric Urology',
+    'Uro-oncology',
+    'Reconstructive Urology',
+    'Laparoscopic/Robotic Urology',
+  ],
+  'Pediatric Surgery': [
+    'Neonatal Surgery',
+    'Thoracic Surgery',
+    'Pediatric Urology',
+    'Pediatric Gastrointestinal Surgery',
+  ],
+  'Plastic and Reconstructive Surgery': [
+    'Hand Surgery',
+    'Microsurgery',
+    'Craniofacial Surgery',
+    'Aesthetic Surgery',
+    'Oncoplasty',
+  ],
+  'Surgical Oncology': [
+    'Breast Oncology',
+    'Gynecological Oncology',
+    'Gastrointestinal Oncology',
+    'Head & Neck Oncology',
+    'Thoracic oncology',
+    'Robotic onco-surgery',
+  ],
+  'Gastrointestinal Surgery': [
+    'Bariatric Surgery',
+    'Upper GI',
+    'Lower GI',
+    'Transplant Surgery',
+    'Hepatobiliary Surgery',
+    'Minimally Invasive Surgery/Robotic GI surgery',
+  ],
+  'Trauma and Critical Care Surgery': [],
+  'Vascular Surgery': [],
+  'Obstetrics and Gynaecology': [],
+  'Interventional Radiology': [
+    'Vascular Interventions including trauma',
+    'Oncology Interventions',
+    'Neurointervention',
+    'Musculoskeletal Interventions',
+    'Thyroid/Uterine artery embolisation',
+  ],
+};
 
 class SurgeonForm extends StatefulWidget {
   final String profileId;
@@ -90,6 +187,8 @@ class _SurgeonFormState extends State<SurgeonForm> {
     "5000-10000",
     "More than 10000",
   ];
+
+  final List<String> yearsOptions = List.generate(40, (index) => '${index + 1}');
 
   bool isLoading = false;
   bool hasProfile = false;
@@ -352,6 +451,8 @@ InputDecoration inputDecoration(String hint) => InputDecoration(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: Colors.blueAccent),
       ),
+      filled: true,
+      fillColor: Colors.white,
     );
 
 Widget titleText(String text) => Padding(
@@ -585,7 +686,7 @@ Widget build(BuildContext context) {
                           const Icon(Iconsax.document_upload, color: Colors.black54, size: 20),
                           const SizedBox(width: 10),
                           Text(
-                            highestDegree != null ? "Highest degree uploaded ✅" : "Upload highest degree (PDF/Image)",
+                            highestDegree != null ? "Highest degree uploaded " : "Upload highest degree (PDF/Image)",
                             style: TextStyle(color: highestDegree != null ? Colors.green : Colors.black54),
                           )
                         ],
@@ -594,22 +695,81 @@ Widget build(BuildContext context) {
                   ),
 
                   titleText("Speciality"),
-                  TextFormField(controller: speciality, decoration: inputDecoration("Your Speciality")),
+                  DropdownSearch<String>(
+                    popupProps: const PopupProps.menu(
+                      showSearchBox: true,
+                      searchFieldProps: TextFieldProps(
+                        decoration: InputDecoration(
+                          hintText: "Search Speciality",
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    items: surgicalSpecialities.keys.toList(),
+                    dropdownDecoratorProps: DropDownDecoratorProps(
+                      dropdownSearchDecoration: inputDecoration("Select Speciality"),
+                    ),
+                    selectedItem: speciality.text.isEmpty ? null : speciality.text,
+                    validator: (v) => v == null || v.isEmpty ? "Required" : null,
+                    onChanged: (value) {
+                      setState(() {
+                        speciality.text = value ?? '';
+                        subSpeciality.text = '';
+                      });
+                    },
+                  ),
 
-                  titleText("Sub-speciality"),
-                  TextFormField(controller: subSpeciality, decoration: inputDecoration("Your Sub-speciality")),
+                  if ((surgicalSpecialities[speciality.text] ?? const <String>[]).isNotEmpty) ...[
+                    titleText("Sub-speciality"),
+                    DropdownSearch<String>(
+                      popupProps: const PopupProps.menu(
+                        showSearchBox: true,
+                        searchFieldProps: TextFieldProps(
+                          decoration: InputDecoration(
+                            hintText: "Search Sub-speciality",
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      items: speciality.text.isEmpty
+                          ? const <String>[]
+                          : (surgicalSpecialities[speciality.text] ?? const <String>[]),
+                      dropdownDecoratorProps: DropDownDecoratorProps(
+                        dropdownSearchDecoration: inputDecoration("Select Sub-speciality"),
+                      ),
+                      selectedItem: subSpeciality.text.isEmpty ? null : subSpeciality.text,
+                      enabled: speciality.text.isNotEmpty,
+                      validator: (v) {
+                        final subs = surgicalSpecialities[speciality.text] ?? const <String>[];
+                        if (subs.isEmpty) return null; // No subspecialities required
+                        return v == null || v.isEmpty ? "Required" : null;
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          subSpeciality.text = value ?? '';
+                        });
+                      },
+                    ),
+                  ],
 
                   titleText("Years of experience"),
-                  TextFormField(
-                    controller: experience,
-                    decoration: inputDecoration("Enter years of experience"),
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Required';
-                      final num = int.tryParse(v);
-                      if (num == null || num < 0) return 'Enter a valid number';
-                      return null;
+                  DropdownButtonFormField<String>(
+                    value: yearsOptions.contains(experience.text) ? experience.text : null,
+                    items: yearsOptions
+                        .map((e) => DropdownMenuItem<String>(
+                              value: e,
+                              child: Text(e),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        experience.text = value ?? '';
+                      });
                     },
+                    decoration: inputDecoration("Select years of experience"),
+                    validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                   ),
 
                   titleText("Surgical experience"),
@@ -629,6 +789,7 @@ Widget build(BuildContext context) {
                     List<TextEditingController> controllers = entry.value;
                     return Card(
                       elevation: 0,
+                      color: Colors.white,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                           side: const BorderSide(color: Colors.black12)),
