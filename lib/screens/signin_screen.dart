@@ -441,6 +441,15 @@ class _LoginScreenState extends State<LoginScreen> {
               final data = body is Map && body['data'] != null ? body['data'] : body;
               final p = data is Map && data['profile'] != null ? data['profile'] : data;
 
+              // ✅ Save Free Trial Flag if present
+              if (p is Map) {
+                final freeTrial = p['freetrail2month'];
+                if (freeTrial != null) {
+                  final isFree = freeTrial.toString().toLowerCase() == 'true';
+                  await SessionManager.saveFreeTrialFlag(isFree);
+                }
+              }
+
               final hasValidProfile = p is Map &&
                   (((p['fullName'] ?? p['fullname'] ?? '')
                               .toString()

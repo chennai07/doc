@@ -57,6 +57,9 @@ class ApiService {
       if (state.isNotEmpty) request.fields['state'] = state;
       if (district.isNotEmpty) request.fields['district'] = district;
 
+      // ✅ Free Trial for 2 Months (Default for new signups)
+      request.fields['freetrail2month'] = 'true';
+
       // ✅ Add workExperience like array indices
       for (int i = 0; i < workExperience.length; i++) {
         final exp = workExperience[i];

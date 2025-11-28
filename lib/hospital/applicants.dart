@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doc/utils/session_manager.dart';
+import 'package:dropdown_search/dropdown_search.dart';
+import 'package:doc/profileprofile/surgeon_form.dart';
 
 class Applicants extends StatefulWidget {
   final String? healthcareId;
@@ -19,13 +21,14 @@ class _ApplicantsState extends State<Applicants> {
   final TextEditingController responsibilitiesCtrl = TextEditingController();
   final TextEditingController qualificationCtrl = TextEditingController();
   final TextEditingController experienceCtrl = TextEditingController();
-  final TextEditingController salaryCtrl = TextEditingController();
+
   final TextEditingController deadlineCtrl = TextEditingController();
 
   String? department;
   String? subSpeciality;
   String? jobType;
   String? interviewMode;
+  String? salaryRange;
 
   bool agree = false;
 
@@ -125,7 +128,7 @@ class _ApplicantsState extends State<Applicants> {
         'keyResponsibilities': responsibilitiesCtrl.text.trim(),
         'preferredQualifications': qualificationCtrl.text.trim(),
         'minYearsOfExperience': experienceCtrl.text.trim(),
-        'salaryRange': salaryCtrl.text.trim(),
+        'salaryRange': salaryRange ?? '',
         'interviewMode': interviewMode ?? '',
         'applicationDeadline': deadlineCtrl.text.trim(),
         'healthcare_id': healthcareId,
@@ -271,29 +274,91 @@ class _ApplicantsState extends State<Applicants> {
             _label("Job Title"),
             _input(jobTitleCtrl, "e.g., Consultant Orthopedic Surgeon"),
 
-            _label("Department"),
-            _dropdown(
-              value: department,
-              hint: "Department",
-              items: ["Cardiology", "Neurosurgery", "Orthopedics", "Urology"],
-              onChanged: (v) => setState(() => department = v),
+            _label("Speciality"),
+            DropdownSearch<String>(
+              popupProps: const PopupProps.menu(
+                showSearchBox: true,
+                searchFieldProps: TextFieldProps(
+                  decoration: InputDecoration(
+                    hintText: "Search Speciality",
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              items: surgicalSpecialities.keys.toList(),
+              dropdownDecoratorProps: DropDownDecoratorProps(
+                dropdownSearchDecoration: InputDecoration(
+                  hintText: "Select Speciality",
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 12,
+                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFF4AB3F4)),
+                  ),
+                ),
+              ),
+              selectedItem: department,
+              onChanged: (value) {
+                setState(() {
+                  department = value;
+                  subSpeciality = null; // Reset sub-speciality
+                });
+              },
             ),
 
-            _label("Sub-Speciality"),
-            _dropdown(
-              value: subSpeciality,
-              hint: "Sub-Speciality",
-              items: [
-                // Must match backend enum exactly
-                // ["Spine Surgery", "Interventional Cardiology", "Brain Surgery", "Neuro Surgery", "Other"]
-                "Spine Surgery",
-                "Interventional Cardiology",
-                "Brain Surgery",
-                "Neuro Surgery",
-                "Other",
-              ],
-              onChanged: (v) => setState(() => subSpeciality = v),
-            ),
+            if (department != null &&
+                (surgicalSpecialities[department] ?? []).isNotEmpty) ...[
+              _label("Sub-Speciality"),
+              DropdownSearch<String>(
+                popupProps: const PopupProps.menu(
+                  showSearchBox: true,
+                  searchFieldProps: TextFieldProps(
+                    decoration: InputDecoration(
+                      hintText: "Search Sub-speciality",
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                items: surgicalSpecialities[department] ?? [],
+                dropdownDecoratorProps: DropDownDecoratorProps(
+                  dropdownSearchDecoration: InputDecoration(
+                    hintText: "Select Sub-speciality",
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 12,
+                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFF4AB3F4)),
+                    ),
+                  ),
+                ),
+                selectedItem: subSpeciality,
+                onChanged: (value) {
+                  setState(() {
+                    subSpeciality = value;
+                  });
+                },
+              ),
+            ],
 
             _label("Job Type"),
             _dropdown(
@@ -327,7 +392,27 @@ class _ApplicantsState extends State<Applicants> {
             _input(experienceCtrl, "Experience in Years"),
 
             _label("Salary Range"),
-            _input(salaryCtrl, "Salary Range in LPA"),
+            _dropdown(
+              value: salaryRange,
+              hint: "Select Salary Range",
+              items: [
+                "5 - 10 LPA",
+                "10 - 15 LPA",
+                "15 - 20 LPA",
+                "20 - 25 LPA",
+                "25 - 30 LPA",
+                "30 - 35 LPA",
+                "35 - 40 LPA",
+                "40 - 45 LPA",
+                "45 - 50 LPA",
+                "50 - 60 LPA",
+                "60 - 70 LPA",
+                "70 - 80 LPA",
+                "80 - 90 LPA",
+                "90+ LPA"
+              ],
+              onChanged: (v) => setState(() => salaryRange = v),
+            ),
 
             _label("Interview Mode"),
             _dropdown(

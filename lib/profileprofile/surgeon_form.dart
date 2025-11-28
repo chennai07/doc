@@ -10,6 +10,8 @@ import 'package:doc/model/api_service.dart';
 import 'package:doc/profileprofile/surgeon_profile.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:doc/model/indian_states_districts.dart';
+import 'package:doc/utils/session_manager.dart';
+import 'package:doc/Subscription Plan Screen/subscription_planScreen.dart';
  
 const Map<String, List<String>> surgicalSpecialities = {
   'General Surgery': [
@@ -386,13 +388,18 @@ class _SurgeonFormState extends State<SurgeonForm> {
   }
 
   Future<void> createProfile() async {
-    if (!formKey.currentState!.validate()) return;
+    if (!formKey.currentState!.validate()) {
+      print('🔴 VALIDATION FAILED - Form not valid');
+      return;
+    }
 
+    print('🟢 VALIDATION PASSED - Starting profile creation');
     setState(() => isLoading = true);
     
     // Update work experience data from controllers
     _updateWorkExperienceData();
 
+    print('🔵 Calling ApiService.createProfile...');
     final result = await ApiService.createProfile(
       fullName: fullName.text,
       phoneNumber: phoneNumber.text,
@@ -417,21 +424,36 @@ class _SurgeonFormState extends State<SurgeonForm> {
       district: selectedDistrict ?? districtCtrl.text,
     );
 
+    print('🔵 API Response received: $result');
+    print('🔵 Success value: ${result['success']}');
+    print('🔵 Success type: ${result['success'].runtimeType}');
+
     if (result['success'] == true) {
+      print('✅ SUCCESS - Profile created successfully!');
       hasProfile = true;
       Get.snackbar("✅ Success", "Profile Created Successfully");
-      final prof = await ApiService.fetchProfileInfo(widget.profileId);
-      if (prof['success'] == true) {
-        final data = prof['data'];
-        if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProfessionalProfileViewPage(profileId: widget.profileId),
-          ),
-        );
+      
+      // ✅ Save Free Trial Flag
+      print('💾 Saving free trial flag...');
+      await SessionManager.saveFreeTrialFlag(true);
+      print('💾 Free trial flag saved!');
+
+      if (!mounted) {
+        print('⚠️ Widget not mounted, cannot navigate');
+        return;
       }
+      
+      print('🚀 Navigating to SubscriptionPlanScreen...');
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const SubscriptionPlanScreen(),
+        ),
+      );
+      print('✅ Navigation completed!');
     } else {
+      print('❌ FAILED - Profile creation failed');
+      print('❌ Error message: ${result['message']}');
       Get.snackbar("❌ Create Failed", result['message']?.toString() ?? 'Error');
     }
 

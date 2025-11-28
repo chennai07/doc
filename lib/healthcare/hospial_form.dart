@@ -26,7 +26,8 @@ Future<Map<String, dynamic>> _addHealthcareProfile({
   required String phoneNumber,
   required String email,
   required String location,
-  required String hospitalType,
+  required String facilityCategory,
+  String? hospitalType,
   required List<String> departmentsAvailable,
   required String hospitalOverview,
   required Map<String, String> hrContact,
@@ -45,7 +46,7 @@ Future<Map<String, dynamic>> _addHealthcareProfile({
       'phoneNumber': phoneNumber,
       'email': email,
       'location': location,
-      'hospitalType': hospitalType,
+      'facilityCategory': facilityCategory,
       'hospitalOverview': hospitalOverview,
       'hrContact[fullName]': hrContact['fullName'] ?? '',
       'hrContact[designation]': hrContact['designation'] ?? '',
@@ -55,6 +56,10 @@ Future<Map<String, dynamic>> _addHealthcareProfile({
       'termsAccepted': termsAccepted.toString(),
       'healthcare_id': healthcareId,
     });
+
+    if (hospitalType != null && hospitalType.isNotEmpty) {
+      req.fields['hospitalType'] = hospitalType;
+    }
 
     for (int i = 0; i < departmentsAvailable.length; i++) {
       req.fields['departmentsAvailable[$i]'] = departmentsAvailable[i];
@@ -180,16 +185,23 @@ class _HospitalFormState extends State<HospitalForm> {
   final TextEditingController websiteController = TextEditingController();
 
   // Dropdown & Selections
-  String? selectedHospitalType;
+  String? selectedFacilityCategory;
+  String? selectedHospitalSize;
   File? hospitalLogo;
   bool agreeTerms = false;
   String searchQuery = ""; // For search functionality
 
-  final List<String> hospitalTypes = [
-    "General Hospital",
-    "Specialty Hospital",
-    "Clinic",
-    "Other",
+  final List<String> facilityCategories = [
+    "Medical Colleges",
+    "Hospitals / Government-Aided Hospitals",
+    "Corporate",
+    "Group Practice",
+  ];
+
+  final List<String> hospitalSizes = [
+    "Small (< 50 beds)",
+    "Medium (50-100 beds)",
+    "Large (> 100 beds)",
   ];
 
   final List<String> departments = [
@@ -235,7 +247,8 @@ class _HospitalFormState extends State<HospitalForm> {
       phoneNumber: phoneController.text.trim(),
       email: emailController.text.trim(),
       location: locationController.text.trim(),
-      hospitalType: selectedHospitalType ?? '',
+      facilityCategory: selectedFacilityCategory ?? '',
+      hospitalType: selectedHospitalSize,
       departmentsAvailable: List<String>.from(selectedDepartments),
       hospitalOverview: overviewController.text.trim(),
       hrContact: {
@@ -468,8 +481,8 @@ class _HospitalFormState extends State<HospitalForm> {
               ),
               const SizedBox(height: 15),
 
-              // 🏥 Hospital Type Dropdown (Styled)
-              Text("Hospital Type", style: labelStyle),
+              // 🏥 Facility Category Dropdown
+              Text("Facility Category", style: labelStyle),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -487,20 +500,26 @@ class _HospitalFormState extends State<HospitalForm> {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: selectedHospitalType,
+                    value: selectedFacilityCategory,
                     icon: const Icon(Icons.keyboard_arrow_down_rounded),
                     dropdownColor: Colors.white,
                     hint: Text(
-                      "Hospital Type",
+                      "Select Category",
                       style: GoogleFonts.poppins(
                         color: Colors.grey,
                         fontSize: 14,
                       ),
                     ),
                     onChanged: (val) {
-                      setState(() => selectedHospitalType = val);
+                      setState(() {
+                        selectedFacilityCategory = val;
+                        // Reset sub-dropdown if category changes
+                        if (val != "Hospitals / Government-Aided Hospitals") {
+                          selectedHospitalSize = null;
+                        }
+                      });
                     },
-                    items: hospitalTypes
+                    items: facilityCategories
                         .map(
                           (type) => DropdownMenuItem(
                             value: type,
@@ -517,6 +536,60 @@ class _HospitalFormState extends State<HospitalForm> {
                   ),
                 ),
               ),
+              const SizedBox(height: 15),
+
+              // 🏥 Hospital Size Dropdown (Conditional)
+              if (selectedFacilityCategory == "Hospitals / Government-Aided Hospitals") ...[
+                Text("Hospital Type (Bed Count)", style: labelStyle),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F9FB),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedHospitalSize,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      dropdownColor: Colors.white,
+                      hint: Text(
+                        "Select Size",
+                        style: GoogleFonts.poppins(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setState(() => selectedHospitalSize = val);
+                      },
+                      items: hospitalSizes
+                          .map(
+                            (size) => DropdownMenuItem(
+                              value: size,
+                              child: Text(
+                                size,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+              ],
               const SizedBox(height: 15),
 
               // 🧠 Departments (Search + Select)
