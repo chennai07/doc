@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:doc/profileprofile/surgeon_profile.dart';
 import 'package:doc/utils/session_manager.dart';
+import 'package:doc/utils/subscription_guard.dart';
 import 'package:doc/homescreen/job_details_screen.dart';
 import 'package:doc/homescreen/Applied_Jobs.dart';
 import '../utils/colors.dart';
@@ -37,7 +38,26 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchJobs();
+    // Check subscription status before allowing access
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkSubscriptionAndLoadJobs();
+    });
+  }
+
+  Future<void> _checkSubscriptionAndLoadJobs() async {
+    // Check if user has active subscription
+    final canAccess = await SubscriptionGuard.checkPremiumAccess(context);
+    
+    if (!canAccess) {
+      // User's trial expired, payment screen was shown
+      // Navigate back to dashboard/profile
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } else {
+      // User has active trial/subscription - load jobs
+      _fetchJobs();
+    }
   }
 
   Future<void> _fetchJobs() async {

@@ -147,9 +147,13 @@ class _HospitalFormState extends State<HospitalForm> {
   }
 
   Future<void> _redirectIfProfileExists() async {
+    print('🏥 Checking if profile already exists for healthcareId: ${widget.healthcareId}');
+    
     try {
+      // First, try the main ID lookup
       final res = await _fetchHealthcareProfile(widget.healthcareId);
       if (!mounted) return;
+      
       if (res['success'] == true) {
         final payload = res['data'];
         final normalized = (payload is Map<String, dynamic>)
@@ -163,13 +167,64 @@ class _HospitalFormState extends State<HospitalForm> {
              normalized['phoneNumber']?.toString().trim().isNotEmpty == true);
         
         if (hasValidProfile) {
+          print('🏥 ✅ Valid profile found! Redirecting to dashboard');
+          print('🏥 Profile data: Hospital=${normalized['hospitalName']}, Email=${normalized['email']}');
+          
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => Navbar(hospitalData: normalized)),
           );
+          return; // Exit early
+        } else {
+          print('🏥 ⚠️ Profile exists but has no valid data');
         }
+      } else {
+        print('🏥 ⚠️ Profile fetch failed with ID lookup');
       }
-    } catch (_) {}
+      
+      // If ID lookup failed, try email lookup as fallback
+      // Get user email from session
+      final userEmail = await SessionManager.getUserEmail();
+      if (userEmail != null && userEmail.isNotEmpty) {
+        print('🏥 Trying email-based profile lookup for: $userEmail');
+        
+        try {
+          final emailUrl = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/email/$userEmail');
+          final emailResp = await http.get(emailUrl).timeout(const Duration(seconds: 10));
+          
+          if (emailResp.statusCode == 200) {
+            final emailBody = jsonDecode(emailResp.body);
+            final emailPayload = (emailBody is Map && emailBody['data'] != null) ? emailBody['data'] : emailBody;
+            final emailMapPayload = (emailPayload is Map<String, dynamic>) ? emailPayload : <String, dynamic>{};
+            
+            final hasValidEmailProfile = emailMapPayload.isNotEmpty && 
+                emailMapPayload['hospitalName']?.toString().trim().isNotEmpty == true;
+            
+            if (hasValidEmailProfile) {
+              print('🏥 ✅ Profile found by email! Redirecting to dashboard');
+              
+              if (!mounted) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => Navbar(hospitalData: emailMapPayload)),
+              );
+              return; // Exit early
+            }
+          }
+        } catch (e) {
+          print('🏥 ⚠️ Email-based lookup failed: $e');
+        }
+      } else {
+        print('🏥 ⚠️ No user email in session for fallback lookup');
+      }
+      
+      // If we reach here, no existing profile was found
+      print('🏥 ℹ️ No existing profile found. User can fill the form.');
+      
+    } catch (e) {
+      print('🏥 ❌ Error during profile check: $e');
+      // Allow form to be shown if there's an error
+    }
   }
 
   // Controllers

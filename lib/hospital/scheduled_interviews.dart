@@ -138,6 +138,7 @@ class _ScheduledInterviewScreenState extends State<ScheduledInterviewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: isLoading
             ? const Center(child: CircularProgressIndicator())

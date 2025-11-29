@@ -407,25 +407,36 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           } else if (healthProfile) {
             // healthProfile is TRUE but we couldn't fetch the profile
-            // This is a data inconsistency - show error
-            print('🔑 ❌ CRITICAL: healthProfile is TRUE but no profile data found!');
+            // This means the user ALREADY HAS a profile, but we can't load it
+            // DO NOT show the form - this would create duplicate profiles
+            // Instead, show error and stay on login screen
+            print('🔑 ❌ CRITICAL: healthProfile is TRUE but profile couldn\'t be loaded!');
+            print('🔑 ❌ This indicates a backend issue or network problem');
+            print('🔑 ❌ NOT navigating to form to prevent duplicate profile creation');
+            
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('⚠️ Profile exists but couldn\'t be loaded. Please contact support or try creating a new profile.'),
-                duration: Duration(seconds: 5),
-                backgroundColor: Colors.orange,
+              SnackBar(
+                content: const Text(
+                  '⚠️ Your profile exists but couldn\'t be loaded.\n'
+                  'Please check your internet connection and try signing in again.\n'
+                  'If the problem persists, contact support.',
+                ),
+                duration: const Duration(seconds: 8),
+                backgroundColor: Colors.red,
+                action: SnackBarAction(
+                  label: 'Retry',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    // Retry sign in
+                    _signIn();
+                  },
+                ),
               ),
             );
-            // Still navigate to form so user can proceed
-            // Use user's _id from sign-in response
-            final idForForm = healthcareIdFromResponse ?? idsToTry.first;
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: idForForm)),
-            );
+            // DO NOT navigate anywhere - keep user on login screen to retry
           } else {
             // No profile found and healthProfile is FALSE - show form to create one
-            print('🔑 ⚠️ No profile found, navigating to HospitalForm');
+            print('🔑 ✅ New user (healthProfile=false), navigating to HospitalForm');
             // Use user's _id from sign-in response
             final idForForm = healthcareIdFromResponse ?? idsToTry.first;
             Navigator.pushReplacement(

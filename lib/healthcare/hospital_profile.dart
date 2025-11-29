@@ -1,10 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:http/http.dart' as http;
 import 'package:doc/screens/signin_screen.dart';
 import 'package:doc/utils/session_manager.dart';
 
-class HospitalProfile extends StatelessWidget {
+class HospitalProfile extends StatefulWidget {
   final Map<String, dynamic> data;
   final bool showBottomBar;
 
@@ -13,6 +15,107 @@ class HospitalProfile extends StatelessWidget {
     required this.data,
     this.showBottomBar = true,
   });
+
+  @override
+  State<HospitalProfile> createState() => _HospitalProfileState();
+}
+
+class _HospitalProfileState extends State<HospitalProfile> {
+  List<Map<String, dynamic>> _jobs = [];
+  bool _isLoadingJobs = true;
+  String? _jobsError;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchJobs();
+  }
+
+  Future<void> _fetchJobs() async {
+    setState(() {
+      _isLoadingJobs = true;
+      _jobsError = null;
+    });
+
+    try {
+      // Get healthcare_id from widget data
+      final healthcareId = widget.data['healthcare_id']?.toString() ??
+          widget.data['_id']?.toString() ??
+          '';
+
+      print('🏥 Fetching jobs for healthcare_id: $healthcareId');
+
+      if (healthcareId.isEmpty) {
+        setState(() {
+          _jobsError = 'Healthcare ID not found';
+          _isLoadingJobs = false;
+        });
+        return;
+      }
+
+      // Use the same API endpoint as MyJobsPage
+      final uri = Uri.parse(
+          'http://13.203.67.154:3000/api/healthcare/joblist-healthcare/$healthcareId');
+      final response = await http.get(uri);
+
+      print('🏥 Jobs API response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final body = response.body.trimLeft();
+        dynamic decoded;
+        try {
+          decoded = jsonDecode(body);
+        } catch (_) {
+          decoded = {};
+        }
+
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        final list = data is List
+            ? data
+            : (data is Map && data['jobs'] is List ? data['jobs'] : <dynamic>[]);
+
+        final jobs = <Map<String, dynamic>>[];
+        for (final item in list) {
+          if (item is Map) {
+            jobs.add(Map<String, dynamic>.from(item as Map));
+          }
+        }
+
+        print('🏥 ✅ Fetched ${jobs.length} jobs');
+
+        if (!mounted) return;
+        setState(() {
+          _jobs = jobs;
+          _isLoadingJobs = false;
+        });
+      } else if (response.statusCode == 404) {
+        // No jobs found - not an error, just empty list
+        print('🏥 No jobs found for this hospital');
+        if (!mounted) return;
+        setState(() {
+          _jobs = [];
+          _jobsError = null;
+          _isLoadingJobs = false;
+        });
+      } else {
+        print('🏥 ❌ Failed to fetch jobs: ${response.statusCode}');
+        if (!mounted) return;
+        setState(() {
+          _jobsError = 'Failed to load jobs';
+          _isLoadingJobs = false;
+        });
+      }
+    } catch (e) {
+      print('🏥 ❌ Error fetching jobs: $e');
+      if (!mounted) return;
+      setState(() {
+        _jobsError = 'Error loading jobs';
+        _isLoadingJobs = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +172,7 @@ class HospitalProfile extends StatelessWidget {
 
             // ✅ Hospital Name & City
             Text(
-              (data['hospitalName'] ?? '').toString(),
+              (widget.data['hospitalName'] ?? '').toString(),
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -78,7 +181,7 @@ class HospitalProfile extends StatelessWidget {
             ),
             const SizedBox(height: 3),
             Text(
-              (data['location'] ?? '').toString(),
+              (widget.data['location'] ?? '').toString(),
               style: GoogleFonts.poppins(fontSize: 14, color: Colors.blue),
             ),
 
@@ -89,17 +192,17 @@ class HospitalProfile extends StatelessWidget {
               alignment: WrapAlignment.spaceBetween,
               runSpacing: 15,
               children: [
-                _contactInfo(Iconsax.sms, "Email", (data['email'] ?? '').toString()),
+                _contactInfo(Iconsax.sms, "Email", (widget.data['email'] ?? '').toString()),
                 _contactInfo(
                   Iconsax.global,
                   "Website",
-                  (data['hospitalWebsite'] ?? '').toString(),
+                  (widget.data['hospitalWebsite'] ?? '').toString(),
                 ),
-                _contactInfo(Iconsax.call, "Phone", (data['phoneNumber'] ?? '').toString()),
+                _contactInfo(Iconsax.call, "Phone", (widget.data['phoneNumber'] ?? '').toString()),
                 _contactInfo(
                   Iconsax.location,
                   "Address",
-                  (data['location'] ?? '').toString(),
+                  (widget.data['location'] ?? '').toString(),
                 ),
               ],
             ),
@@ -119,7 +222,7 @@ class HospitalProfile extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              (data['hospitalOverview'] ?? '').toString(),
+              (widget.data['hospitalOverview'] ?? '').toString(),
               style: GoogleFonts.poppins(
                 fontSize: 13,
                 color: Colors.black87,
@@ -145,11 +248,12 @@ class HospitalProfile extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                ...List<String>.from((data['departmentsAvailable'] ?? const []))
+                ...List<String>.from((widget.data['departmentsAvailable'] ?? const []))
                     .map((d) => _departmentChip(d))
                     .toList(),
               ],
             ),
+
 
             const SizedBox(height: 30),
 
@@ -166,16 +270,52 @@ class HospitalProfile extends StatelessWidget {
             ),
             const SizedBox(height: 15),
 
-            _jobCard(),
-            const SizedBox(height: 15),
-            _jobCard(),
+            // Show loading, error, or job listings
+            if (_isLoadingJobs)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_jobsError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  _jobsError!,
+                  style: GoogleFonts.poppins(
+                    color: Colors.redAccent,
+                    fontSize: 14,
+                  ),
+                ),
+              )
+            else if (_jobs.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'No job openings available at the moment',
+                  style: GoogleFonts.poppins(
+                    color: Colors.black54,
+                    fontSize: 14,
+                  ),
+                ),
+              )
+            else
+              Column(
+                children: _jobs.map((job) => Padding(
+                  padding: const EdgeInsets.only(bottom: 15),
+                  child: _jobCard(job),
+                )).toList(),
+              ),
+
             const SizedBox(height: 50),
+
           ],
         ),
       ),
 
       // ✅ Bottom Navigation Bar
-      bottomNavigationBar: showBottomBar
+      bottomNavigationBar: widget.showBottomBar
           ? Container(
               height: 65,
               decoration: BoxDecoration(
@@ -251,7 +391,20 @@ class HospitalProfile extends StatelessWidget {
   }
 
   // 🔹 Job Listing Card
-  Widget _jobCard() {
+  Widget _jobCard(Map<String, dynamic> job) {
+    // Extract job data
+    final jobTitle = job['jobTitle']?.toString() ?? 'Job Opening';
+    final hospitalName = widget.data['hospitalName']?.toString() ?? 'Hospital';
+    final location = job['location']?.toString() ?? widget.data['location']?.toString() ?? 'Location';
+    final aboutRole = job['aboutRole']?.toString() ?? 'No description available';
+    final subSpeciality = job['subSpeciality']?.toString() ?? '';
+    final employmentType = job['employmentType']?.toString() ?? '';
+    final experienceRequired = job['experienceRequired']?.toString() ?? '';
+    
+    // Get applicant count - need to fetch from applications
+    // For now, show a placeholder or calculate if data is available
+    final applicantCount = job['applicantCount']?.toString() ?? '0';
+    
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -284,7 +437,7 @@ class HospitalProfile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Neuro Surgeon",
+                      jobTitle,
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
@@ -292,14 +445,14 @@ class HospitalProfile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      "Apollo Hospital",
+                      hospitalName,
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     Text(
-                      "Bangalore • India",
+                      location,
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -322,7 +475,7 @@ class HospitalProfile extends StatelessWidget {
                     const Icon(Iconsax.people, color: Colors.blue, size: 15),
                     const SizedBox(width: 4),
                     Text(
-                      "35 Applicants",
+                      "$applicantCount Applicants",
                       style: GoogleFonts.poppins(
                         color: Colors.blue,
                         fontSize: 12,
@@ -337,8 +490,10 @@ class HospitalProfile extends StatelessWidget {
 
           const SizedBox(height: 10),
           Text(
-            "Lorem ipsum dolor sit amet consectetur ut sagittis arcu nunc commodo morbi sem aliquet.",
+            aboutRole,
             style: GoogleFonts.poppins(fontSize: 13, color: Colors.black87),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
 
           const SizedBox(height: 12),
@@ -346,9 +501,9 @@ class HospitalProfile extends StatelessWidget {
             spacing: 10,
             runSpacing: 8,
             children: [
-              _tag("Cerebro Vascular"),
-              _tag("Full Time"),
-              _tag("Exp: 1-3 Years"),
+              if (subSpeciality.isNotEmpty) _tag(subSpeciality),
+              if (employmentType.isNotEmpty) _tag(employmentType),
+              if (experienceRequired.isNotEmpty) _tag('Exp: $experienceRequired'),
             ],
           ),
         ],

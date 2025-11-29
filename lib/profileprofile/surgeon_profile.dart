@@ -7,6 +7,8 @@ import 'package:doc/utils/session_manager.dart';
 import 'package:doc/screens/signin_screen.dart';
 import 'package:doc/homescreen/SearchjobScreen.dart';
 import 'package:doc/homescreen/Applied_Jobs.dart';
+import 'package:doc/utils/subscription_testing_screen.dart';
+import 'package:doc/utils/subscription_guard.dart';
 
 class ProfessionalProfileViewPage extends StatefulWidget {
   final String profileId;
@@ -118,6 +120,19 @@ class _ProfessionalProfileViewPageState
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // 🧪 TESTING BUTTON - Remove this before production
+          IconButton(
+            icon: const Icon(Icons.science, color: Colors.orange),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SubscriptionTestingScreen(),
+                ),
+              );
+            },
+            tooltip: '🧪 Test Subscription',
+          ),
           IconButton(
             icon: const Icon(Iconsax.logout, color: Colors.redAccent),
             onPressed: _logout,
@@ -125,9 +140,25 @@ class _ProfessionalProfileViewPageState
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      body: Column(
+        children: [
+          // Show trial expiry banner if subscription expired
+          FutureBuilder<bool?>(
+            future: SessionManager.getFreeTrialFlag(),
+            builder: (context, snapshot) {
+              if (snapshot.data == false) {
+                // Trial expired - show warning banner
+                return SubscriptionGuard.buildTrialExpiredBanner(context);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          
+          // Main profile content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
@@ -233,6 +264,9 @@ class _ProfessionalProfileViewPageState
             const SizedBox(height: 10),
           ],
         ),
+      ),
+          ),
+        ],
       ),
 
       // Bottom Navigation Bar (same style as HospitalProfile)
