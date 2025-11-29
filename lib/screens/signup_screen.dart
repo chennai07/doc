@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:doc/screens/signin_screen.dart';
+import 'package:doc/screens/otp_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -76,11 +77,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         );
 
-        // ✅ Navigate to login screen with redirect based on selected role
+        // ✅ Navigate to OTP screen
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            MaterialPageRoute(
+              builder: (context) => OtpScreen(email: emailController.text.trim()),
+            ),
           );
         });
       } else {
