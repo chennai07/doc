@@ -63,7 +63,46 @@ class _NavbarState extends State<Navbar> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: pages[selectedIndex],
+      body: Column(
+        children: [
+          // KYC / Free Trial Banner
+          Container(
+            width: double.infinity,
+            color: const Color(0xFFFFF8E1), // Light Amber
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 10, // Handle status bar
+              bottom: 10,
+              left: 16,
+              right: 16,
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    color: Colors.orange, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "You are under a free trial and we are reviewing your profile is under the KYC process",
+                    style: TextStyle(
+                      color: Colors.orange[800],
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Main Content
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: pages[selectedIndex],
+            ),
+          ),
+        ],
+      ),
 
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),

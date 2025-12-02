@@ -10,6 +10,7 @@ import 'package:doc/healthcare/hospital_profile.dart';
 import 'package:doc/Navbar.dart';
 import 'package:http/http.dart' as http;
 import 'package:doc/utils/session_manager.dart';
+import 'package:doc/Subscription Plan Screen/hospital_free_trial_screen.dart';
 
 class HospitalForm extends StatefulWidget {
   final String healthcareId;
@@ -376,12 +377,40 @@ class _HospitalFormState extends State<HospitalForm> {
           normalized['healthcare_id'] = finalHealthcareId;
         }
         
-        print('🏥 Navigating to Navbar with healthcare_id: ${normalized['healthcare_id']}');
-        
+        print('🏥 Navigating to Free Trial Screen with healthcare_id: ${normalized['healthcare_id']}');
+
+        // Extract payment info from the INITIAL response (res['data'])
+        int paymentAmount = 0;
+        String facilityCategory = selectedFacilityCategory ?? "Corporate";
+
+        if (res['data'] != null) {
+          final rData = res['data'];
+          if (rData is Map) {
+            // Check top level or inside 'data'
+            if (rData.containsKey('paymentAmount')) {
+              paymentAmount = int.tryParse(rData['paymentAmount'].toString()) ?? 0;
+            } else if (rData['data'] is Map && rData['data'].containsKey('paymentAmount')) {
+              paymentAmount = int.tryParse(rData['data']['paymentAmount'].toString()) ?? 0;
+            }
+
+            // Also try to get facilityCategory from response if available, otherwise use selected
+            if (rData.containsKey('facilityCategory')) {
+              facilityCategory = rData['facilityCategory'].toString();
+            } else if (rData['data'] is Map && rData['data'].containsKey('facilityCategory')) {
+              facilityCategory = rData['data']['facilityCategory'].toString();
+            }
+          }
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => Navbar(hospitalData: normalized),
+            builder: (_) => HospitalFreeTrialScreen(
+              paymentAmount: paymentAmount,
+              facilityCategory: facilityCategory,
+              healthcareId: finalHealthcareId,
+              hospitalData: normalized,
+            ),
           ),
         );
       } else {

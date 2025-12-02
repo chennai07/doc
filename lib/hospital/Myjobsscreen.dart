@@ -24,10 +24,21 @@ class _MyJobsPageState extends State<MyJobsPage> {
   bool _isLoading = true;
   String? _error;
 
+  // Added for filtering and ID tracking
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String? _resolvedHealthcareId;
+
   @override
   void initState() {
     super.initState();
     _fetchJobs();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchJobs() async {
@@ -40,7 +51,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
       final fromWidgetId = widget.healthcareId;
       final storedId =
           (await SessionManager.getHealthcareId()) ?? await SessionManager.getProfileId() ?? '';
-      final healthcareId =
+      var healthcareId =
           (fromWidgetId != null && fromWidgetId.isNotEmpty) ? fromWidgetId : storedId;
 
       if (healthcareId.isEmpty) {
@@ -51,6 +62,29 @@ class _MyJobsPageState extends State<MyJobsPage> {
         });
         return;
       }
+
+      // Resolve the correct healthcare_id from the profile
+      try {
+        final profileUri = Uri.parse(
+            'http://13.203.67.154:3000/api/healthcare/healthcare-profile/$healthcareId');
+        final profileRes = await http.get(profileUri);
+        if (profileRes.statusCode == 200) {
+          final body = jsonDecode(profileRes.body);
+          final data =
+              body is Map && body['data'] != null ? body['data'] : body;
+          if (data is Map) {
+            final realId = data['healthcare_id']?.toString();
+            if (realId != null && realId.isNotEmpty) {
+              healthcareId = realId;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error resolving healthcare_id: $e');
+      }
+
+      // Store the resolved ID for future use (e.g. filters)
+      _resolvedHealthcareId = healthcareId;
 
       final uri = Uri.parse(
           'http://13.203.67.154:3000/api/healthcare/joblist-healthcare/$healthcareId');
@@ -108,8 +142,38 @@ class _MyJobsPageState extends State<MyJobsPage> {
     }
   }
 
+  List<Map<String, dynamic>> get _filteredJobs {
+    return _jobs.where((job) {
+      // 1. Filter by Tab (Active vs Closed)
+      final status = (job['status']?.toString() ?? 'Active').toLowerCase();
+      final isActiveTab = tabIndex == 0;
+      
+      // If tab is Active, show everything EXCEPT 'closed'
+      // If tab is Closed, show ONLY 'closed'
+      if (isActiveTab) {
+        if (status == 'closed') return false;
+      } else {
+        if (status != 'closed') return false;
+      }
+
+      // 2. Filter by Search Query
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final title = (job['jobTitle']?.toString() ?? '').toLowerCase();
+        final dept = (job['department']?.toString() ?? '').toLowerCase();
+        final loc = (job['location']?.toString() ?? '').toLowerCase();
+        
+        return title.contains(query) || dept.contains(query) || loc.contains(query);
+      }
+
+      return true;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final displayJobs = _filteredJobs;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -184,6 +248,12 @@ class _MyJobsPageState extends State<MyJobsPage> {
 
               // ---------- SEARCH BAR ----------
               TextField(
+                controller: _searchController,
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val;
+                  });
+                },
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   hintText: "Search",
@@ -277,7 +347,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
               const SizedBox(height: 20),
 
               Text(
-                "${_jobs.length} Results",
+                "${displayJobs.length} Results",
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -302,7 +372,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
                     style: const TextStyle(color: Colors.redAccent),
                   ),
                 )
-              else if (_jobs.isEmpty)
+              else if (displayJobs.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Text(
@@ -312,7 +382,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
                 )
               else
                 Column(
-                  children: _jobs.map(_buildJobCard).toList(),
+                  children: displayJobs.map(_buildJobCard).toList(),
                 ),
             ],
           ),
