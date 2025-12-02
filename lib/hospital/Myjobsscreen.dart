@@ -28,6 +28,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _resolvedHealthcareId;
+  String _hospitalName = ''; // Added
 
   @override
   void initState() {
@@ -76,6 +77,11 @@ class _MyJobsPageState extends State<MyJobsPage> {
             final realId = data['healthcare_id']?.toString();
             if (realId != null && realId.isNotEmpty) {
               healthcareId = realId;
+            }
+            // Extract hospital name
+            final name = data['hospitalName'] ?? data['name'] ?? data['organizationName'];
+            if (name != null) {
+              _hospitalName = name.toString();
             }
           }
         }
@@ -215,9 +221,9 @@ class _MyJobsPageState extends State<MyJobsPage> {
                     Expanded(
                       child: GestureDetector(
                         onTap: widget.onHospitalNameTap,
-                        child: const Text(
-                          "Apollo Hospitals",
-                          style: TextStyle(
+                        child: Text(
+                          _hospitalName.isNotEmpty ? _hospitalName : "Hospital",
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.black87,

@@ -19,6 +19,46 @@ class MyJobsPage extends StatefulWidget {
 class _MyJobsPageState extends State<MyJobsPage> {
   int bottomIndex = 0;
   int tabIndex = 0; // 0 = Active, 1 = Closed
+  String _hospitalName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchHospitalName();
+  }
+
+  Future<void> _fetchHospitalName() async {
+    try {
+      String healthcareId = widget.healthcareId ?? '';
+      if (healthcareId.isEmpty) {
+        healthcareId = await SessionManager.getHealthcareId() ?? '';
+      }
+      if (healthcareId.isEmpty) {
+        healthcareId = await SessionManager.getProfileId() ?? '';
+      }
+      
+      if (healthcareId.isNotEmpty) {
+        final uri = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/$healthcareId');
+        final response = await http.get(uri);
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final profile = data is Map && data['data'] != null ? data['data'] : data;
+          if (profile is Map) {
+             final name = profile['hospitalName'] ?? profile['name'] ?? profile['organizationName'];
+             if (name != null) {
+               if (mounted) {
+                 setState(() {
+                   _hospitalName = name.toString();
+                 });
+               }
+             }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching hospital name: $e');
+    }
+  }
 
   Future<void> _handlePostJob() async {
     // Show loading
@@ -199,9 +239,9 @@ class _MyJobsPageState extends State<MyJobsPage> {
                     Expanded(
                       child: GestureDetector(
                         onTap: widget.onHospitalNameTap,
-                        child: const Text(
-                          "Apollo Hospitals",
-                          style: TextStyle(
+                        child: Text(
+                          _hospitalName.isNotEmpty ? _hospitalName : "Hospital",
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.black87,
@@ -227,8 +267,6 @@ class _MyJobsPageState extends State<MyJobsPage> {
                   ],
                 ),
               ),
-
-              const SizedBox(height: 20),
 
               const SizedBox(height: 20),
 
