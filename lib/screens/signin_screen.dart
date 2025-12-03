@@ -300,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
           print('🔑 📋 User email: $email');
           
           // Try to fetch profile using multiple IDs in priority order
- Map<String, dynamic>? navHospitalData;
+          Map<String, dynamic>? navHospitalData;
           String? workingHealthcareId;
           
           // Try each ID until we find the profile
@@ -354,7 +354,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   print('🔑 💾 Saved profile mapping: $email → $profileActualId');
                   break; // Found profile! Stop trying other IDs
                 } else {
-                  print('🔑 ⚠️ ID $tryId returned empty data, trying next...');
+                  // 🔥 CRITICAL: Profile exists (200) but has no data - likely backend corruption
+                  print('🔑 ⚠️ ID $tryId returned empty data (PROFILE CORRUPTION!)');
+                  print('🔑 ⚠️ This usually happens after posting a job - backend issue!');
+                  print('🔑 ⚠️ Profile data: $mapPayload');
                 }
               } else {
                 print('🔑 ⚠️ ID $tryId returned ${resp.statusCode}, trying next...');
@@ -365,19 +368,30 @@ class _LoginScreenState extends State<LoginScreen> {
             }
           }
           
-          // If still not found and healthProfile is true, try email lookup as last resort
-          if (navHospitalData == null && healthProfile) {
-            print('🔑 ⚠️ All ID attempts failed. Trying email lookup as last resort...');
+          // 🔥 CRITICAL FIX: Always try email lookup if profile not found by ID
+          // This handles cases where:
+          // 1. Backend ID structure changed
+          // 2. Profile was created with different ID
+          // 3. Session data was corrupted
+          // This is SAFE because we're matching by the user's own email from sign-in
+          if (navHospitalData == null) {
+            print('🔑 ⚠️ ID-based lookup failed. Trying email lookup...');
             try {
               final emailUrl = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/email/$email');
               final emailResp = await http.get(emailUrl).timeout(const Duration(seconds: 10));
+              
+              print('🔑 Email lookup response status: ${emailResp.statusCode}');
               
               if (emailResp.statusCode == 200) {
                 final emailBody = jsonDecode(emailResp.body);
                 final emailPayload = (emailBody is Map && emailBody['data'] != null) ? emailBody['data'] : emailBody;
                 final emailMapPayload = (emailPayload is Map<String, dynamic>) ? emailPayload : <String, dynamic>{};
                 
-                if (emailMapPayload.isNotEmpty && emailMapPayload['hospitalName']?.toString().trim().isNotEmpty == true) {
+                final hasValidEmailProfile = emailMapPayload.isNotEmpty && 
+                    (emailMapPayload['hospitalName']?.toString().trim().isNotEmpty == true ||
+                     emailMapPayload['email']?.toString().trim().isNotEmpty == true);
+                
+                if (hasValidEmailProfile) {
                   print('🔑 ✅ Found profile by email!');
                   final foundId = (emailMapPayload['_id'] ?? emailMapPayload['healthcare_id'] ?? profileId).toString();
                   
@@ -388,16 +402,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   await SessionManager.saveHealthcareId(foundId);
                   workingHealthcareId = foundId;
                   print('🔑 💾 Saved profile mapping from email lookup: $email → $foundId');
+                } else {
+                  print('🔑 ⚠️ Email lookup returned empty profile data');
                 }
+              } else {
+                print('🔑 ⚠️ Email lookup failed with status: ${emailResp.statusCode}');
               }
             } catch (e) {
-              print('🔑 ⚠️ Email lookup failed: $e');
+              print('🔑 ❌ Email lookup error: $e');
             }
           }
           
           if (!mounted) return;
           
-          // Navigate based on whether we found a profile AND healthProfile flag
+          // Navigate based on whether we found a profile
           if (navHospitalData != null && workingHealthcareId != null) {
             // Profile found! Navigate to dashboard
             print('🔑 ✅ Navigating to Navbar with profile data');
@@ -407,21 +425,22 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           } else if (healthProfile) {
             // healthProfile is TRUE but we couldn't fetch the profile
-            // This means the user ALREADY HAS a profile, but we can't load it
-            // DO NOT show the form - this would create duplicate profiles
-            // Instead, show error and stay on login screen
-            print('🔑 ❌ CRITICAL: healthProfile is TRUE but profile couldn\'t be loaded!');
-            print('🔑 ❌ This indicates a backend issue or network problem');
-            print('🔑 ❌ NOT navigating to form to prevent duplicate profile creation');
+            // This could mean:
+            // 1. Network issue (temporary)
+            // 2. Backend corrupted the profile (after job posting)
+            // 3. Profile was deleted but flag not updated (rare)
+            print('🔑 ⚠️ healthProfile is TRUE but profile couldn\'t be loaded');
+            print('🔑 ⚠️ This is likely due to backend profile corruption after job posting');
             
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text(
-                  '⚠️ Your profile exists but couldn\'t be loaded.\n'
-                  'Please check your internet connection and try signing in again.\n'
-                  'If the problem persists, contact support.',
+                content: Text(
+                  '⚠️ Your profile data was corrupted by the backend.\n'
+                  'This is a known issue that happens after posting jobs.\n'
+                  'Please contact support with your email: $email\n'
+                  'Backend team needs to restore your profile data.',
                 ),
-                duration: const Duration(seconds: 8),
+                duration: const Duration(seconds: 12),
                 backgroundColor: Colors.red,
                 action: SnackBarAction(
                   label: 'Retry',
@@ -433,7 +452,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             );
-            // DO NOT navigate anywhere - keep user on login screen to retry
+            // Keep user on login screen to retry
           } else {
             // No profile found and healthProfile is FALSE - show form to create one
             print('🔑 ✅ New user (healthProfile=false), navigating to HospitalForm');

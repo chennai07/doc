@@ -205,6 +205,29 @@ When User B logs in, you should see:
 ✅ **Secure**: User B can never access User A's data  
 ✅ **Reliable**: Works even if logout fails to clear session  
 ✅ **Predictable**: Always uses ID from current sign-in response  
-✅ **Simple**: No complex fallback logic to debug  
+✅ **Fallback Safe**: Email lookup uses authenticated email from current sign-in only  
 
 **The key principle:** Each sign-in is treated as a **NEW**, **FRESH** login. We never trust or reuse data from previous sessions.
+
+## Update: Email-Based Fallback (Latest Fix)
+
+### Why We Added It Back:
+The previous fix removed email-based lookup entirely, which prevented existing users from logging in when ID-based lookup failed.
+
+### How It's Safe:
+1. **Email comes from backend**: We use the email from the current sign-in API response, not stored emails
+2. **After authentication**: Backend only returns email if credentials are valid
+3. **As fallback only**: We try ID-based lookup first, email lookup only if that fails
+4. **No stored data**: We don't use any emails from previous sessions
+
+### Example Flow:
+```
+User B logs in with wwwwww@gmail.com
+→ Backend authenticates and returns: { "email": "wwwwww@gmail.com", "_id": "222222" }
+→ App tries ID lookup with "222222" (fails if profile has different ID)
+→ App tries email lookup with "wwwwww@gmail.com" (from current response!)
+→ Finds User B's profile (NOT User A's, because we used User B's email)
+→ User B sees their own dashboard ✅
+```
+
+**Key Point:** The email is tied to the authenticated user from the current sign-in, so there's no way to access another user's profile.
