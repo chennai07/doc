@@ -313,7 +313,20 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(child: Image.asset('assets/logo.png', height: 80)),
+                    Center(
+                      child: Image.asset(
+                        'assets/logo2.png',
+                        height: 80,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Column(
+                            children: [
+                              Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              Text("Surgeon Search", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     _buildSearchBar(),
                     const SizedBox(height: 15),

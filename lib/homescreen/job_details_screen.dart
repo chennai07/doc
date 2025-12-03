@@ -171,8 +171,21 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
               '')
           .toString();
 
+      if (healthcareId.isEmpty) {
+        if (!mounted) return false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Healthcare ID is missing for this job. Cannot apply.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return false;
+      }
+
       final url =
           Uri.parse('http://13.203.67.154:3000/api/jobs/apply');
+      print('🔵 Submitting application to $url');
+      
       final request = http.MultipartRequest('POST', url);
 
       request.fields['firstName'] = firstName;
@@ -186,14 +199,22 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
       request.fields['surgeonprofile_id'] = surgeonProfileId;
       request.fields['job_id'] = widget.jobId;
 
+      print('🔵 Request Fields: ${request.fields}');
+
       if (cvFile != null && cvFile.path != null && cvFile.path!.isNotEmpty) {
+        print('🔵 Attaching CV: ${cvFile.path}');
         request.files.add(
           await http.MultipartFile.fromPath('cv', cvFile.path!),
         );
+      } else {
+        print('🟠 No CV file selected');
       }
 
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
+
+      print('🔵 Response Status: ${response.statusCode}');
+      print('🔵 Response Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
@@ -212,7 +233,9 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
         );
         return false;
       }
-    } catch (e) {
+    } catch (e, stack) {
+      print('🔴 Error submitting application: $e');
+      print(stack);
       if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error submitting application: $e')),
@@ -479,25 +502,38 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () async {
-                              final first = firstNameController.text.trim();
+                              final fullName = firstNameController.text.trim();
                               final phone = phoneController.text.trim();
                               final email = emailController.text.trim();
 
-                              if (first.isEmpty ||
+                              if (fullName.isEmpty ||
                                   phone.isEmpty ||
                                   email.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                        'Please fill at least first name, phone and email.'),
+                                        'Please fill at least full name, phone and email.'),
                                   ),
                                 );
                                 return;
                               }
 
+                              String fName = fullName;
+                              String lName = '';
+                              if (fullName.contains(' ')) {
+                                int idx = fullName.lastIndexOf(' ');
+                                fName = fullName.substring(0, idx).trim();
+                                lName = fullName.substring(idx + 1).trim();
+                              }
+                              
+                              // Fallback for empty last name if backend requires it
+                              if (lName.isEmpty) {
+                                lName = '.';
+                              }
+
                                 final ok = await _submitApplication(
-                                firstName: first,
-                                lastName: '', // Sending empty string as last name is removed
+                                firstName: fName,
+                                lastName: lName,
                                 phone: phone,
                                 email: email,
                                 location: selectedLocation,
