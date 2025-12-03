@@ -426,38 +426,13 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           } else {
             // No profile found.
-            // If healthProfile is TRUE, we should have found it. Show error.
-            if (healthProfile) {
-               print('🔑 ⚠️ healthProfile is TRUE but profile couldn\'t be loaded');
-               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text(
-                    'We detected a sync issue with your profile data. Please tap "Refresh Profile" to restore your access.',
-                  ),
-                  duration: const Duration(seconds: 10),
-                  backgroundColor: Colors.orange.shade800,
-                  action: SnackBarAction(
-                    label: 'Refresh Profile',
-                    textColor: Colors.white,
-                    onPressed: () {
-                      final idForForm = healthcareIdFromResponse ?? (idsToTry.isNotEmpty ? idsToTry.first : profileId);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: idForForm)),
-                      );
-                    },
-                  ),
-                ),
-              );
-            } else {
-              // healthProfile is FALSE, so it's a new user or intentional.
-              print('🔑 ✅ New user (healthProfile=false), navigating to HospitalForm');
-              final idForForm = healthcareIdFromResponse ?? (idsToTry.isNotEmpty ? idsToTry.first : profileId);
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: idForForm)),
-              );
-            }
+            // Directly navigate to HospitalForm so user can create/refresh profile
+            print('🔑 ℹ️ No existing hospital profile found. Navigating to HospitalForm');
+            final idForForm = healthcareIdFromResponse ?? (idsToTry.isNotEmpty ? idsToTry.first : profileId);
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: idForForm)),
+            );
           }
         } else if (rl.contains('surgeon') || rl.contains('doctor')) {
           try {
