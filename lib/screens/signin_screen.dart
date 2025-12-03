@@ -220,218 +220,107 @@ class _LoginScreenState extends State<LoginScreen> {
 
         final rl = (role ?? '').toLowerCase().trim();
         if (rl.contains('hospital') || rl.contains('health') || rl.contains('org')) {
-          // CRITICAL: Extract the user's _id from signin response
-          // The backend uses this _id as the primary identifier for healthcare profiles
-          String? healthcareIdFromResponse;
-          
-          // First, try to get _id (MongoDB primary key) - this is what the backend uses!
+          // Extract primary healthcare ID from signin response
+          String? healthcareId;
+
           if (userData is Map) {
             final raw = (userData['_id'] ??
-                    userData['id'] ??
                     userData['healthcare_id'] ??
                     userData['healthcareId'] ??
-                    userData['healthcareID'])
+                    userData['healthcareID'] ??
+                    userData['id'])
                 ?.toString()
                 .trim();
             if (raw != null && raw.isNotEmpty) {
-              healthcareIdFromResponse = raw;
-              print('🔑 Found ID in userData: $raw');
-            }
-          }
-          
-          // If not found in userData, try data level
-          if (healthcareIdFromResponse == null || healthcareIdFromResponse.isEmpty) {
-            if (data is Map) {
-              final raw = (data['_id'] ??
-                      data['id'] ??
-                      data['healthcare_id'] ??
-                      data['healthcareId'] ??
-                      data['healthcareID'])
-                  ?.toString()
-                  .trim();
-              if (raw != null && raw.isNotEmpty) {
-                healthcareIdFromResponse = raw;
-                print('🔑 Found ID in data: $raw');
-              }
+              healthcareId = raw;
             }
           }
 
-          print('🔑 Healthcare ID from login response: $healthcareIdFromResponse');
-          print('🔑 User email: $email');
+          if ((healthcareId == null || healthcareId.isEmpty) && data is Map) {
+            final raw = (data['_id'] ??
+                    data['healthcare_id'] ??
+                    data['healthcareId'] ??
+                    data['healthcareID'] ??
+                    data['id'])
+                ?.toString()
+                .trim();
+            if (raw != null && raw.isNotEmpty) {
+              healthcareId = raw;
+            }
+          }
 
-          // Save the current user's email for session tracking
           await SessionManager.saveUserEmail(email);
-          
-          // 🔥 COMPLETE FRONTEND FIX for Backend ID Mismatch:
-          // Backend creates profiles with their own _id (profileDoc._id)
-          // but stores healthcare_id field = user._id
-          // Backend GET endpoint uses findById() instead of findOne({healthcare_id})
-          
-          // Strategy: Check if THIS user (by email) has a known profile _id
-          final userProfileId = await SessionManager.getUserProfileMapping(email);
-          print('🔑 Known profile _id for $email: $userProfileId');
-          
-          // List of IDs to try (in priority order)
-          final List<String> idsToTry = [];
-          
-          // Priority 1: User's known profile _id (from previous successful profile creation)
-          if (userProfileId != null && userProfileId.isNotEmpty) {
-            idsToTry.add(userProfileId);
-            print('🔑 Will try known profile _id first');
+          if (healthcareId != null && healthcareId.isNotEmpty) {
+            await SessionManager.saveHealthcareId(healthcareId);
           }
-          
-          // Priority 2: User's _id from sign-in response
-          if (healthcareIdFromResponse != null && healthcareIdFromResponse.isNotEmpty) {
-            if (!idsToTry.contains(healthcareIdFromResponse)) {
-              idsToTry.add(healthcareIdFromResponse);
-              print('🔑 Will try user _id from sign-in');
+
+          // Existing hospital user: healthprofile == true
+          if (healthProfile) {
+            if (healthcareId == null || healthcareId.isEmpty) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Unable to determine hospital ID.')),
+              );
+              return;
             }
-          }
-          
-          // Priority 3: Generated profile ID as fallback
-          if (!idsToTry.contains(profileId)) {
-            idsToTry.add(profileId);
-          }
-          
-          print('🔑 IDs to try (in order): $idsToTry');
-          
-          print('🔑 📋 Starting profile fetch process...');
-          print('🔑 📋 healthProfile flag: $healthProfile (IGNORING FLAG - ALWAYS CHECKING)');
-          print('🔑 📋 User email: $email');
-          
-          // Try to fetch profile using multiple IDs in priority order
-          Map<String, dynamic>? navHospitalData;
-          String? workingHealthcareId;
-          
-          // Try each ID until we find the profile
-          for (int i = 0; i < idsToTry.length; i++) {
-            final tryId = idsToTry[i];
-            print('🔑 Attempt ${i + 1}/${idsToTry.length}: Fetching with ID: $tryId');
-            
+
             try {
-              final url = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/$tryId');
+              final url = Uri.parse(
+                  'http://13.203.67.154:3000/api/healthcare/healthcare-profile/$healthcareId');
               final resp = await http.get(url).timeout(const Duration(seconds: 10));
-              
-              print('🔑 Response status: ${resp.statusCode}');
-              
+
               if (resp.statusCode == 200) {
                 final body = resp.body.trimLeft();
                 dynamic parsed;
-                try { 
+                try {
                   parsed = jsonDecode(body);
-                } catch (e) { 
-                  print('🔑 ❌ JSON parse error: $e');
-                  continue; // Try next ID
+                } catch (_) {
+                  parsed = {};
                 }
-                
-                final payload = (parsed is Map && parsed['data'] != null) ? parsed['data'] : parsed;
-                final mapPayload = (payload is Map<String, dynamic>) ? payload : <String, dynamic>{};
 
-                // Check if the profile has meaningful data
-                final hasValidProfile = mapPayload.isNotEmpty && 
-                    (mapPayload['hospitalName']?.toString().trim().isNotEmpty == true ||
-                     mapPayload['email']?.toString().trim().isNotEmpty == true ||
-                     mapPayload['phoneNumber']?.toString().trim().isNotEmpty == true);
-                
-                if (hasValidProfile) {
-                  print('🔑 ✅ Found valid profile with ID: $tryId');
-                  
-                  // Extract the profile's actual _id
-                  final profileActualId = (mapPayload['_id'] ??
-                          mapPayload['healthcare_id'] ??
-                          tryId)
-                      .toString()
-                      .trim();
-                  
-                  // Save this user's profile ID mapping for future logins
-                  await SessionManager.saveUserProfileMapping(email, profileActualId);
-                  await SessionManager.saveHealthcareId(profileActualId);
-                  workingHealthcareId = profileActualId;
-                  
-                  navHospitalData = Map<String, dynamic>.from(mapPayload);
-                  navHospitalData['healthcare_id'] = profileActualId;
-                  
-                  print('🔑 💾 Saved profile mapping: $email → $profileActualId');
-                  break; // Found profile! Stop trying other IDs
-                } else {
-                  // 🔥 CRITICAL: Profile exists (200) but has no data - likely backend corruption
-                  print('🔑 ⚠️ ID $tryId returned empty data (PROFILE CORRUPTION!)');
-                  print('🔑 ⚠️ This usually happens after posting a job - backend issue!');
-                  print('🔑 ⚠️ Profile data: $mapPayload');
-                }
+                final payload =
+                    (parsed is Map && parsed['data'] != null) ? parsed['data'] : parsed;
+                final mapPayload =
+                    (payload is Map<String, dynamic>) ? payload : <String, dynamic>{};
+
+                final navHospitalData = Map<String, dynamic>.from(mapPayload);
+                navHospitalData['healthcare_id'] = healthcareId;
+
+                if (!mounted) return;
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => Navbar(hospitalData: navHospitalData),
+                  ),
+                );
               } else {
-                print('🔑 ⚠️ ID $tryId returned ${resp.statusCode}, trying next...');
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        'Could not load hospital profile. Please try again.'),
+                  ),
+                );
               }
-            } catch (e) {
-              print('🔑 ⚠️ Error with ID $tryId: $e, trying next...');
-              continue; // Try next ID
+            } catch (_) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      'Could not load hospital profile. Please try again.'),
+                ),
+              );
             }
-          }
-          
-          // 🔥 CRITICAL FIX: Always try email lookup if profile not found by ID
-          // This handles cases where:
-          // 1. Backend ID structure changed
-          // 2. Profile was created with different ID
-          // 3. Session data was corrupted
-          // This is SAFE because we're matching by the user's own email from sign-in
-          if (navHospitalData == null) {
-            print('🔑 ⚠️ ID-based lookup failed. Trying email lookup...');
-            try {
-              final emailUrl = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/email/$email');
-              final emailResp = await http.get(emailUrl).timeout(const Duration(seconds: 10));
-              
-              print('🔑 Email lookup response status: ${emailResp.statusCode}');
-              
-              if (emailResp.statusCode == 200) {
-                final emailBody = jsonDecode(emailResp.body);
-                final emailPayload = (emailBody is Map && emailBody['data'] != null) ? emailBody['data'] : emailBody;
-                final emailMapPayload = (emailPayload is Map<String, dynamic>) ? emailPayload : <String, dynamic>{};
-                
-                final hasValidEmailProfile = emailMapPayload.isNotEmpty && 
-                    (emailMapPayload['hospitalName']?.toString().trim().isNotEmpty == true ||
-                     emailMapPayload['email']?.toString().trim().isNotEmpty == true);
-                
-                if (hasValidEmailProfile) {
-                  print('🔑 ✅ Found profile by email!');
-                  final foundId = (emailMapPayload['_id'] ?? emailMapPayload['healthcare_id'] ?? profileId).toString();
-                  
-                  navHospitalData = Map<String, dynamic>.from(emailMapPayload);
-                  navHospitalData['healthcare_id'] = foundId;
-                  
-                  await SessionManager.saveUserProfileMapping(email, foundId);
-                  await SessionManager.saveHealthcareId(foundId);
-                  workingHealthcareId = foundId;
-                  print('🔑 💾 Saved profile mapping from email lookup: $email → $foundId');
-                } else {
-                  print('🔑 ⚠️ Email lookup returned empty profile data');
-                }
-              } else {
-                print('🔑 ⚠️ Email lookup failed with status: ${emailResp.statusCode}');
-              }
-            } catch (e) {
-              print('🔑 ❌ Email lookup error: $e');
-            }
-          }
-          
-          if (!mounted) return;
-          
-          // Navigate based on whether we found a profile
-          // We prioritize finding the profile over the healthProfile flag
-          if (navHospitalData != null && workingHealthcareId != null) {
-            // Profile found! Navigate to dashboard
-            print('🔑 ✅ Navigating to Navbar with profile data');
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => Navbar(hospitalData: navHospitalData!)),
-            );
           } else {
-            // No profile found.
-            // Directly navigate to HospitalForm so user can create/refresh profile
-            print('🔑 ℹ️ No existing hospital profile found. Navigating to HospitalForm');
-            final idForForm = healthcareIdFromResponse ?? (idsToTry.isNotEmpty ? idsToTry.first : profileId);
+            // New hospital user (no completed health profile) -> go to HospitalForm
+            final idForForm = (healthcareId != null && healthcareId.isNotEmpty)
+                ? healthcareId
+                : profileId;
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => HospitalForm(healthcareId: idForForm)),
+              MaterialPageRoute(
+                builder: (_) => HospitalForm(healthcareId: idForForm),
+              ),
             );
           }
         } else if (rl.contains('surgeon') || rl.contains('doctor')) {
