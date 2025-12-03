@@ -12,6 +12,7 @@ import 'package:dropdown_search/dropdown_search.dart';
 import 'package:doc/model/indian_states_districts.dart';
 import 'package:doc/utils/session_manager.dart';
 import 'package:doc/Subscription Plan Screen/subscription_planScreen.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
  
 const Map<String, List<String>> surgicalSpecialities = {
   'General Surgery': [
@@ -174,6 +175,7 @@ class _SurgeonFormState extends State<SurgeonForm> {
   File? cv;
   File? highestDegree;
   File? logBook;
+  String? profilePicUrl;
 
   String? selectedSurgicalExperience;
   String? selectedState;
@@ -205,6 +207,7 @@ class _SurgeonFormState extends State<SurgeonForm> {
     super.initState();
 
     final d = widget.existingData ?? {};
+    profilePicUrl = d['profilePicture'];
 
     fullName = TextEditingController(text: d['fullName'] ?? '');
     speciality = TextEditingController(text: d['speciality'] ?? '');
@@ -234,8 +237,26 @@ class _SurgeonFormState extends State<SurgeonForm> {
     // Initialize work experience controllers
     _initializeWorkExpControllers();
     
+    // Prefill from session immediately
+    _prefillFromSession();
+
     // Fetch and prefill if profile exists for given profileId
     _loadProfileIfAny();
+  }
+
+  Future<void> _prefillFromSession() async {
+    final sessionName = await SessionManager.getUserName();
+    if (sessionName != null && sessionName.isNotEmpty && fullName.text.isEmpty) {
+      setState(() => fullName.text = sessionName);
+    }
+    final sessionPhone = await SessionManager.getUserPhone();
+    if (sessionPhone != null && sessionPhone.isNotEmpty && phoneNumber.text.isEmpty) {
+      setState(() => phoneNumber.text = sessionPhone);
+    }
+    final sessionEmail = await SessionManager.getUserEmail();
+    if (sessionEmail != null && sessionEmail.isNotEmpty && email.text.isEmpty) {
+      setState(() => email.text = sessionEmail);
+    }
   }
 
   Future<void> _loadProfileIfAny() async {
@@ -248,7 +269,14 @@ class _SurgeonFormState extends State<SurgeonForm> {
       final p = data is Map && data['profile'] != null ? data['profile'] : data;
       if (p is Map) {
         hasProfile = true;
-        fullName.text = (p['fullName'] ?? p['fullname'] ?? fullName.text) as String;
+        profilePicUrl = p['profilePicture'];
+        print("🔍 SurgeonForm: Profile Data: $p");
+        fullName.text = (p['fullName'] ?? 
+                         p['fullname'] ?? 
+                         p['name'] ?? 
+                         p['username'] ?? 
+                         p['full_name'] ??
+                         fullName.text).toString();
         speciality.text = (p['speciality'] ?? speciality.text) as String;
         subSpeciality.text = (p['subSpeciality'] ?? subSpeciality.text) as String;
         degree.text = (p['degree'] ?? degree.text) as String;
@@ -289,6 +317,22 @@ class _SurgeonFormState extends State<SurgeonForm> {
         }
       }
     }
+
+    
+    // Auto-populate from session if still empty
+    if (email.text.isEmpty) {
+      final sessionEmail = await SessionManager.getUserEmail();
+      if (sessionEmail != null) email.text = sessionEmail;
+    }
+    if (phoneNumber.text.isEmpty) {
+      final sessionPhone = await SessionManager.getUserPhone();
+      if (sessionPhone != null) phoneNumber.text = sessionPhone;
+    }
+    if (fullName.text.isEmpty) {
+      final sessionName = await SessionManager.getUserName();
+      if (sessionName != null) fullName.text = sessionName;
+    }
+
     setState(() => isLoading = false);
   }
 
@@ -485,9 +529,41 @@ Widget titleText(String text) => Padding(
     );
 
 Future<void> pickProfileImage() async {
-  final result = await FilePicker.platform.pickFiles(type: FileType.image);
+  final result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['jpg', 'jpeg', 'png'],
+  );
   if (result != null) {
-    setState(() => profilePic = File(result.files.single.path!));
+    final originalFile = File(result.files.single.path!);
+    final fileSize = await originalFile.length();
+    
+    // If file > 1MB, compress it
+    if (fileSize > 1024 * 1024) {
+      try {
+        final dir = await Directory.systemTemp.createTemp();
+        final targetPath = "${dir.path}/${p.basename(originalFile.path)}";
+        
+        final compressedFile = await FlutterImageCompress.compressAndGetFile(
+          originalFile.path,
+          targetPath,
+          quality: 70, // Adjust quality as needed
+          minWidth: 800,
+          minHeight: 800,
+        );
+        
+        if (compressedFile != null) {
+          setState(() => profilePic = File(compressedFile.path));
+        } else {
+          // Fallback to original if compression fails
+          setState(() => profilePic = originalFile);
+        }
+      } catch (e) {
+        print("Error compressing image: $e");
+        setState(() => profilePic = originalFile);
+      }
+    } else {
+      setState(() => profilePic = originalFile);
+    }
   }
 }
 
@@ -576,9 +652,52 @@ void dispose() {
   super.dispose();
 }
 
+  Future<void> _selectYear(BuildContext context, TextEditingController controller) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Select Year"),
+          content: SizedBox(
+            width: 300,
+            height: 300,
+            child: YearPicker(
+              firstDate: DateTime(1950),
+              lastDate: DateTime.now(),
+              selectedDate: DateTime.now(),
+              onChanged: (DateTime dateTime) {
+                controller.text = dateTime.year.toString();
+                Navigator.pop(context);
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 @override
 Widget build(BuildContext context) {
   return Scaffold(
+    bottomNavigationBar: Container(
+      padding: const EdgeInsets.all(16),
+      color: Colors.white,
+      child: SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: ElevatedButton(
+          onPressed: hasProfile ? updateProfile : createProfile,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.lightBlueAccent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Text(
+            hasProfile ? "Update" : "Submit",
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+        ),
+      ),
+    ),
     backgroundColor: Colors.white,
     appBar: AppBar(
       title: const Text("Professional profile",
@@ -599,8 +718,8 @@ Widget build(BuildContext context) {
                   style: TextStyle(color: Colors.black54, fontSize: 13),
                 ),
 
-                  titleText("Full Name"),
-                  TextFormField(controller: fullName, decoration: inputDecoration("Full name"), validator: (v)=> (v==null||v.isEmpty)?'Required':null),
+                  titleText("Full Name as per the record"),
+                  TextFormField(controller: fullName, decoration: inputDecoration("Full name as per the record"), validator: (v)=> (v==null||v.isEmpty)?'Required':null),
 
                   titleText("Phone number"),
                   TextFormField(controller: phoneNumber, decoration: inputDecoration("Your number"), keyboardType: TextInputType.phone),
@@ -611,6 +730,7 @@ Widget build(BuildContext context) {
                   titleText("State"),
                   DropdownSearch<String>(
                     popupProps: const PopupProps.menu(
+                      menuProps: MenuProps(backgroundColor: Colors.white),
                       showSearchBox: true,
                       searchFieldProps: TextFieldProps(
                         decoration: InputDecoration(
@@ -638,6 +758,7 @@ Widget build(BuildContext context) {
                   titleText("District"),
                   DropdownSearch<String>(
                     popupProps: const PopupProps.menu(
+                      menuProps: MenuProps(backgroundColor: Colors.white),
                       showSearchBox: true,
                       searchFieldProps: TextFieldProps(
                         decoration: InputDecoration(
@@ -672,19 +793,47 @@ Widget build(BuildContext context) {
                           borderRadius: BorderRadius.circular(12)),
                       child: Row(
                         children: [
-                          const Icon(Iconsax.image, color: Colors.black54, size: 20),
+                          if (profilePic != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(profilePic!, width: 50, height: 50, fit: BoxFit.cover),
+                            )
+                          else if (profilePicUrl != null && profilePicUrl!.isNotEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                profilePicUrl!,
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Iconsax.image, color: Colors.black54, size: 20),
+                              ),
+                            )
+                          else
+                            const Icon(Iconsax.image, color: Colors.black54, size: 20),
                           const SizedBox(width: 10),
-                          Text(
-                            profilePic != null ? "Image selected ✅" : "Upload your image",
-                            style: TextStyle(color: profilePic != null ? Colors.green : Colors.black54),
+                          Expanded(
+                            child: Text(
+                              profilePic != null
+                                  ? "Image selected ✅"
+                                  : (profilePicUrl != null && profilePicUrl!.isNotEmpty
+                                      ? "Profile picture available (Tap to change)"
+                                      : "Upload your image"),
+                              style: TextStyle(
+                                color: (profilePic != null || (profilePicUrl != null && profilePicUrl!.isNotEmpty))
+                                    ? Colors.green
+                                    : Colors.black54,
+                              ),
+                            ),
                           )
                         ],
                       ),
                     ),
                   ),
 
-                  titleText("Degree"),
-                  TextFormField(controller: degree, decoration: inputDecoration("Your Degree")),
+                  titleText("Qualification"),
+                  TextFormField(controller: degree, decoration: inputDecoration("Your Qualification")),
 
                   titleText("Highest Degree (file)"),
                   GestureDetector(
@@ -719,6 +868,7 @@ Widget build(BuildContext context) {
                   titleText("Speciality"),
                   DropdownSearch<String>(
                     popupProps: const PopupProps.menu(
+                      menuProps: MenuProps(backgroundColor: Colors.white),
                       showSearchBox: true,
                       searchFieldProps: TextFieldProps(
                         decoration: InputDecoration(
@@ -746,6 +896,7 @@ Widget build(BuildContext context) {
                     titleText("Sub-speciality"),
                     DropdownSearch<String>(
                       popupProps: const PopupProps.menu(
+                        menuProps: MenuProps(backgroundColor: Colors.white),
                         showSearchBox: true,
                         searchFieldProps: TextFieldProps(
                           decoration: InputDecoration(
@@ -834,11 +985,15 @@ Widget build(BuildContext context) {
                               children: [
                                 Expanded(child: TextFormField(
                                   controller: controllers[2],
+                                  readOnly: true,
+                                  onTap: () => _selectYear(context, controllers[2]),
                                   decoration: inputDecoration("From (Year)"),
                                 )),
                                 const SizedBox(width: 10),
                                 Expanded(child: TextFormField(
                                   controller: controllers[3],
+                                  readOnly: true,
+                                  onTap: () => _selectYear(context, controllers[3]),
                                   decoration: inputDecoration("To (Year)"),
                                 )),
                               ],
@@ -907,21 +1062,6 @@ Widget build(BuildContext context) {
                   ),
 
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: hasProfile ? updateProfile : createProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.lightBlueAccent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text(
-                        hasProfile ? "Update" : "Submit",
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 20),
                 ]),
               ),

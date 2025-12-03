@@ -223,11 +223,71 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
 
   void _showApplyFormDialog(BuildContext context) {
     final firstNameController = TextEditingController();
-    final lastNameController = TextEditingController();
+    // lastNameController removed
     final phoneController = TextEditingController();
     final emailController = TextEditingController();
     final linkedinController = TextEditingController();
     final notesController = TextEditingController();
+
+    // Auto-fetch user details
+    SessionManager.getUserEmail().then((email) {
+      if (email != null && email.isNotEmpty) {
+        emailController.text = email;
+      }
+    });
+    SessionManager.getUserPhone().then((phone) {
+      if (phone != null && phone.isNotEmpty) {
+        phoneController.text = phone;
+      }
+    });
+    SessionManager.getUserName().then((name) {
+      if (name != null && name.isNotEmpty) {
+        firstNameController.text = name;
+      }
+    });
+
+    // Attempt to fetch profile name if possible, or just use what we have
+    // Since we don't have a direct "getUserName" in SessionManager shown in context, 
+    // we might need to rely on what's available or fetch profile. 
+    // However, the user asked to auto-fetch "first name".
+    // Let's try to fetch profile info to get the name if not readily available.
+    SessionManager.getProfileId().then((pid) async {
+      if (pid != null) {
+        try {
+           final url = Uri.parse('http://13.203.67.154:3000/api/sugeon/profile-info/$pid');
+           final response = await http.get(url);
+           if (response.statusCode == 200) {
+             final data = jsonDecode(response.body);
+             final p = data['data'] is Map && data['data']['profile'] != null 
+                 ? data['data']['profile'] 
+                 : (data['data'] is Map ? data['data'] : {});
+             
+             if (p is Map) {
+               final fullName = (p['fullName'] ?? 
+                                 p['fullname'] ?? 
+                                 p['name'] ?? 
+                                 p['username'] ?? 
+                                 '').toString();
+               if (fullName.isNotEmpty) {
+                 firstNameController.text = fullName; // Using full name as first name field
+               }
+               // Also ensure phone/email are set if session didn't have them
+               if (phoneController.text.isEmpty) {
+                  phoneController.text = (p['phoneNumber'] ?? 
+                                          p['phone'] ?? 
+                                          p['mobile'] ?? 
+                                          p['mobileNumber'] ?? 
+                                          p['mobilenumber'] ?? 
+                                          '').toString();
+               }
+               if (emailController.text.isEmpty) {
+                  emailController.text = (p['email'] ?? '').toString();
+               }
+             }
+           }
+        } catch (_) {}
+      }
+    });
 
     String selectedLocation = 'Bangalore, India';
     PlatformFile? selectedFile;
@@ -266,23 +326,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                           child: TextField(
                             controller: firstNameController,
                             decoration: const InputDecoration(
-                              hintText: 'First name',
-                              filled: true,
-                              fillColor: Color(0xFFF8F8F8),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(8),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            controller: lastNameController,
-                            decoration: const InputDecoration(
-                              hintText: 'Last name',
+                              hintText: 'Full Name', // Changed to Full Name as we removed Last Name
                               filled: true,
                               fillColor: Color(0xFFF8F8F8),
                               border: OutlineInputBorder(
@@ -451,9 +495,9 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                                 return;
                               }
 
-                              final ok = await _submitApplication(
+                                final ok = await _submitApplication(
                                 firstName: first,
-                                lastName: lastNameController.text.trim(),
+                                lastName: '', // Sending empty string as last name is removed
                                 phone: phone,
                                 email: email,
                                 location: selectedLocation,
@@ -674,7 +718,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       const Icon(
-                                        Icons.attach_money,
+                                        Icons.currency_rupee,
                                         color: Colors.white,
                                         size: 24,
                                       ),

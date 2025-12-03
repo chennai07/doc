@@ -12,6 +12,7 @@ class DoctorProfileData {
   final String email;
   final String location;
   final String portfolio;
+  final String profilePicture;
 
   DoctorProfileData({
     required this.name,
@@ -27,6 +28,7 @@ class DoctorProfileData {
     required this.email,
     required this.location,
     required this.portfolio,
+    required this.profilePicture,
   });
 
   factory DoctorProfileData.fromMap(Map<String, dynamic> data) {
@@ -66,10 +68,17 @@ class DoctorProfileData {
       organization: organization,
       period: period,
       workLocation: workLocation,
-      phone: profileData['phoneNumber']?.toString() ?? '',
+
+      phone: profileData['phoneNumber']?.toString() ?? 
+             profileData['phone']?.toString() ?? 
+             profileData['mobile']?.toString() ?? 
+             profileData['mobileNumber']?.toString() ?? 
+             profileData['mobilenumber']?.toString() ?? 
+             '',
       email: profileData['email']?.toString() ?? '',
       location: profileData['location']?.toString() ?? profileData['state']?.toString() ?? '',
       portfolio: profileData['portfolioLinks']?.toString() ?? '',
+      profilePicture: profileData['profilePicture']?.toString() ?? '',
     );
   }
 }

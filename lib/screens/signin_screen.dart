@@ -212,6 +212,28 @@ class _LoginScreenState extends State<LoginScreen> {
           await SessionManager.saveRole(role);
         }
         await SessionManager.saveHealthProfileFlag(healthProfile);
+        await SessionManager.saveUserEmail(email);
+
+        // Save phone number if available
+        if (userData is Map) {
+           final phone = (userData['phoneNumber'] ?? 
+                          userData['phone'] ?? 
+                          userData['mobile'] ?? 
+                          userData['mobileNumber'] ?? 
+                          userData['mobilenumber'])?.toString();
+           if (phone != null && phone.isNotEmpty) {
+             await SessionManager.saveUserPhone(phone);
+           }
+
+           final name = (userData['fullName'] ?? 
+                         userData['fullname'] ?? 
+                         userData['name'] ?? 
+                         userData['username'] ??
+                         userData['full_name'])?.toString();
+           if (name != null && name.isNotEmpty) {
+             await SessionManager.saveUserName(name);
+           }
+        }
 
         if (!mounted) return;
         ScaffoldMessenger.of(
@@ -249,7 +271,8 @@ class _LoginScreenState extends State<LoginScreen> {
             }
           }
 
-          await SessionManager.saveUserEmail(email);
+
+
           if (healthcareId != null && healthcareId.isNotEmpty) {
             await SessionManager.saveHealthcareId(healthcareId);
           }

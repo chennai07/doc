@@ -151,4 +151,28 @@ class SessionManager {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('user_email');
   }
+
+  /// ✅ Save current user's phone number
+  static Future<void> saveUserPhone(String phone) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_phone', phone);
+  }
+
+  /// ✅ Get current user's phone number
+  static Future<String?> getUserPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_phone');
+  }
+
+  /// ✅ Save current user's name
+  static Future<void> saveUserName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', name);
+  }
+
+  /// ✅ Get current user's name
+  static Future<String?> getUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_name');
+  }
 }

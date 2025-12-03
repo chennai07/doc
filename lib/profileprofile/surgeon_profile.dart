@@ -150,10 +150,27 @@ class _ProfessionalProfileViewPageState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: CircleAvatar(
-                radius: 60,
-                backgroundColor: Colors.blueAccent.withOpacity(0.1),
-                child: const Icon(Iconsax.user, size: 50, color: Colors.grey),
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blueAccent.withOpacity(0.1),
+                ),
+                child: ClipOval(
+                  child: _profile!.profilePicture.isNotEmpty
+                      ? Image.network(
+                          _profile!.profilePicture,
+                          fit: BoxFit.cover,
+                          width: 120,
+                          height: 120,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Iconsax.user,
+                                size: 50, color: Colors.grey);
+                          },
+                        )
+                      : const Icon(Iconsax.user, size: 50, color: Colors.grey),
+                ),
               ),
             ),
             const SizedBox(height: 16),

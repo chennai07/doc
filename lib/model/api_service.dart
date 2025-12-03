@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class ApiService {
   static const String baseUrl =
@@ -79,8 +80,18 @@ class ApiService {
 
       // ✅ Attach files
       if (imageFile != null) {
+        // Determine content type based on extension
+        final ext = imageFile.path.split('.').last.toLowerCase();
+        final contentType = (ext == 'png') 
+            ? MediaType('image', 'png') 
+            : MediaType('image', 'jpeg');
+
         request.files.add(
-          await http.MultipartFile.fromPath('profilePicture', imageFile.path),
+          await http.MultipartFile.fromPath(
+            'profilePicture', 
+            imageFile.path,
+            contentType: contentType,
+          ),
         );
       }
 

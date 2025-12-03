@@ -205,7 +205,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          "Active",
+                          "Activate",
                           style: TextStyle(
                             color: Color(0xFF0052CC),
                             fontSize: 15,
