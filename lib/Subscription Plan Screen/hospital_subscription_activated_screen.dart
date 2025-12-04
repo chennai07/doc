@@ -26,7 +26,7 @@ class _HospitalSubscriptionActivatedPopupState extends State<HospitalSubscriptio
   }
 
   void _startAutoRedirect() {
-    _timer = Timer(const Duration(seconds: 2), () {
+    _timer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         _navigateToDashboard();
       }
@@ -58,7 +58,7 @@ class _HospitalSubscriptionActivatedPopupState extends State<HospitalSubscriptio
           Container(
             width: double.infinity,
             height: double.infinity,
-            color: Colors.black.withOpacity(0.35),
+            color: Colors.white,
           ),
 
           /// Bottom curved popup
