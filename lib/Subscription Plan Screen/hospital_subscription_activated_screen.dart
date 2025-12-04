@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:doc/Navbar.dart';
 import 'package:doc/utils/session_manager.dart';
 
-class HospitalSubscriptionActivatedPopup extends StatelessWidget {
+class HospitalSubscriptionActivatedPopup extends StatefulWidget {
   final Map<String, dynamic> hospitalData;
 
   const HospitalSubscriptionActivatedPopup({
@@ -11,9 +12,46 @@ class HospitalSubscriptionActivatedPopup extends StatelessWidget {
   });
 
   @override
+  State<HospitalSubscriptionActivatedPopup> createState() => _HospitalSubscriptionActivatedPopupState();
+}
+
+class _HospitalSubscriptionActivatedPopupState extends State<HospitalSubscriptionActivatedPopup> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    print("🏥 HospitalSubscriptionActivatedPopup INIT");
+    _startAutoRedirect();
+  }
+
+  void _startAutoRedirect() {
+    _timer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        _navigateToDashboard();
+      }
+    });
+  }
+
+  void _navigateToDashboard() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Navbar(hospitalData: widget.hospitalData),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent, // Make scaffold transparent
       body: Stack(
         children: [
           /// Dimmed background
@@ -32,8 +70,8 @@ class HospitalSubscriptionActivatedPopup extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(110),
-                  topRight: Radius.circular(110),
+                  topLeft: Radius.circular(50), // Adjusted to match design
+                  topRight: Radius.circular(50),
                 ),
               ),
               child: Column(
@@ -41,15 +79,15 @@ class HospitalSubscriptionActivatedPopup extends StatelessWidget {
                 children: [
                   /// Icon
                   Container(
-                    padding: const EdgeInsets.all(25),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: const Color(0xFFEFF6FF),
                     ),
                     child: const Icon(
-                      Icons.check_circle_rounded,
-                      size: 55,
-                      color: Color(0xFF2D7DEB),
+                      Icons.check_rounded, // Changed to simple check as per design
+                      size: 40,
+                      color: Color(0xFF0062FF),
                     ),
                   ),
 
@@ -62,7 +100,7 @@ class HospitalSubscriptionActivatedPopup extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF005BD4),
+                      color: Color(0xFF0062FF),
                     ),
                   ),
 
@@ -81,41 +119,7 @@ class HospitalSubscriptionActivatedPopup extends StatelessWidget {
 
                   const SizedBox(height: 25),
 
-                  /// Continue button
-                  InkWell(
-                    onTap: () async {
-                      if (context.mounted) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => Navbar(hospitalData: hospitalData),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF0072FF), Color(0xFF0053CC)],
-                        ),
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                      ),
-                      child: Center(
-                        child: Text(
-                          "Continue",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 35),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),

@@ -218,11 +218,25 @@ class _HospitalProfileState extends State<HospitalProfile> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // ✅ Hospital Logo
+            // ✅ Hospital Logo
             Center(
-              child: Image.asset(
-                'assets/logo2.png',
+              child: Container(
+                width: 100,
                 height: 100,
-                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 80, color: Colors.grey),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: ClipOval(
+                  child: (_profileData['hospitalLogo'] != null && 
+                          _profileData['hospitalLogo'].toString().isNotEmpty)
+                      ? Image.network(
+                          _profileData['hospitalLogo'].toString(),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Image.asset('assets/logo2.png', fit: BoxFit.cover),
+                        )
+                      : Image.asset('assets/logo2.png', fit: BoxFit.cover),
+                ),
               ),
             ),
             const SizedBox(height: 10),

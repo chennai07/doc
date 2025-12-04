@@ -1,14 +1,55 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:doc/profileprofile/surgeon_profile.dart';
 import 'package:doc/utils/session_manager.dart';
 
-class SubscriptionActivatedScreen extends StatelessWidget {
+class SubscriptionActivatedScreen extends StatefulWidget {
   const SubscriptionActivatedScreen({super.key});
+
+  @override
+  State<SubscriptionActivatedScreen> createState() => _SubscriptionActivatedScreenState();
+}
+
+class _SubscriptionActivatedScreenState extends State<SubscriptionActivatedScreen> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    print("👨‍⚕️ SubscriptionActivatedScreen INIT");
+    _startAutoRedirect();
+  }
+
+  void _startAutoRedirect() {
+    _timer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        _navigateToDashboard();
+      }
+    });
+  }
+
+  Future<void> _navigateToDashboard() async {
+    final profileId = await SessionManager.getProfileId();
+    if (mounted && profileId != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ProfessionalProfileViewPage(profileId: profileId),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           /// Dimmed background
@@ -27,8 +68,8 @@ class SubscriptionActivatedScreen extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(110),
-                  topRight: Radius.circular(110),
+                  topLeft: Radius.circular(50),
+                  topRight: Radius.circular(50),
                 ),
               ),
               child: Column(
@@ -36,15 +77,15 @@ class SubscriptionActivatedScreen extends StatelessWidget {
                 children: [
                   /// Icon
                   Container(
-                    padding: const EdgeInsets.all(25),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: const Color(0xFFEFF6FF),
                     ),
                     child: const Icon(
-                      Icons.check_circle_rounded,
-                      size: 55,
-                      color: Color(0xFF2D7DEB),
+                      Icons.check_rounded,
+                      size: 40,
+                      color: Color(0xFF0062FF),
                     ),
                   ),
 
@@ -57,7 +98,7 @@ class SubscriptionActivatedScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF005BD4),
+                      color: Color(0xFF0062FF),
                     ),
                   ),
 
@@ -74,45 +115,7 @@ class SubscriptionActivatedScreen extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 25),
-
-                  /// Continue button
-                  InkWell(
-                    onTap: () async {
-                      final profileId = await SessionManager.getProfileId();
-                      if (context.mounted && profileId != null) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ProfessionalProfileViewPage(profileId: profileId),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF0072FF), Color(0xFF0053CC)],
-                        ),
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                      ),
-                      child: Center(
-                        child: Text(
-                          "Continue",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 35),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),

@@ -373,66 +373,62 @@ class _HospitalFormState extends State<HospitalForm> {
       await SessionManager.saveUserProfileMapping(userEmail, finalHealthcareId);
       print('🏥 💾 Saved profile mapping: $userEmail → $finalHealthcareId');
 
-      // Fetch profile using this healthcare ID and navigate to dashboard
-      final prof = await _fetchHealthcareProfile(finalHealthcareId);
-      print('🏥 Profile fetch result: ${prof['success']}');
+      // Skip fetching profile immediately to avoid consistency delays.
+      // We have the ID and the data we just submitted.
       
-      if (prof['success'] == true) {
-        final payload = prof['data'];
-        final normalized = (payload is Map<String, dynamic>)
-            ? (payload['data'] is Map<String, dynamic> ? payload['data'] : payload)
-            : <String, dynamic>{};
-        
-        // Ensure the healthcare_id is in the normalized data
-        if (!normalized.containsKey('healthcare_id') || 
-            normalized['healthcare_id']?.toString().trim().isEmpty == true) {
-          normalized['healthcare_id'] = finalHealthcareId;
-        }
-        
-        print('🏥 Navigating to Free Trial Screen with healthcare_id: ${normalized['healthcare_id']}');
+      Map<String, dynamic> finalHospitalData = {};
+      
+      // Try to use returned data
+      if (res['data'] is Map) {
+         final payload = res['data'];
+         final normalized = (payload['data'] is Map ? payload['data'] : payload);
+         if (normalized is Map) {
+           finalHospitalData = Map<String, dynamic>.from(normalized);
+         }
+      }
+      
+      // Ensure essential fields are present (fallback to form inputs)
+      finalHospitalData['healthcare_id'] = finalHealthcareId;
+      if (finalHospitalData['hospitalName'] == null) finalHospitalData['hospitalName'] = hospitalNameController.text.trim();
+      if (finalHospitalData['email'] == null) finalHospitalData['email'] = emailController.text.trim();
+      if (finalHospitalData['location'] == null) finalHospitalData['location'] = locationController.text.trim();
+      
+      print('🏥 Navigating to Free Trial Screen with healthcare_id: $finalHealthcareId');
 
-        // Extract payment info from the INITIAL response (res['data'])
-        int paymentAmount = 0;
-        String facilityCategory = selectedFacilityCategory ?? "Corporate";
+      // Extract payment info from the INITIAL response (res['data'])
+      int paymentAmount = 0;
+      String facilityCategory = selectedFacilityCategory ?? "Corporate";
 
-        if (res['data'] != null) {
-          final rData = res['data'];
-          if (rData is Map) {
-            // Check top level or inside 'data'
-            if (rData.containsKey('paymentAmount')) {
-              paymentAmount = int.tryParse(rData['paymentAmount'].toString()) ?? 0;
-            } else if (rData['data'] is Map && rData['data'].containsKey('paymentAmount')) {
-              paymentAmount = int.tryParse(rData['data']['paymentAmount'].toString()) ?? 0;
-            }
+      if (res['data'] != null) {
+        final rData = res['data'];
+        if (rData is Map) {
+          // Check top level or inside 'data'
+          if (rData.containsKey('paymentAmount')) {
+            paymentAmount = int.tryParse(rData['paymentAmount'].toString()) ?? 0;
+          } else if (rData['data'] is Map && rData['data'].containsKey('paymentAmount')) {
+            paymentAmount = int.tryParse(rData['data']['paymentAmount'].toString()) ?? 0;
+          }
 
-            // Also try to get facilityCategory from response if available, otherwise use selected
-            if (rData.containsKey('facilityCategory')) {
-              facilityCategory = rData['facilityCategory'].toString();
-            } else if (rData['data'] is Map && rData['data'].containsKey('facilityCategory')) {
-              facilityCategory = rData['data']['facilityCategory'].toString();
-            }
+          // Also try to get facilityCategory from response if available, otherwise use selected
+          if (rData.containsKey('facilityCategory')) {
+            facilityCategory = rData['facilityCategory'].toString();
+          } else if (rData['data'] is Map && rData['data'].containsKey('facilityCategory')) {
+            facilityCategory = rData['data']['facilityCategory'].toString();
           }
         }
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => HospitalFreeTrialScreen(
-              paymentAmount: paymentAmount,
-              facilityCategory: facilityCategory,
-              healthcareId: finalHealthcareId,
-              hospitalData: normalized,
-            ),
-          ),
-        );
-      } else {
-        Get.snackbar(
-          'Profile', 
-          'Created, but failed to fetch profile. Please try logging in again.',
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-        );
       }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => HospitalFreeTrialScreen(
+            paymentAmount: paymentAmount,
+            facilityCategory: facilityCategory,
+            healthcareId: finalHealthcareId,
+            hospitalData: finalHospitalData,
+          ),
+        ),
+      );
     } else {
       Get.snackbar(
         'Submit Failed', 
@@ -556,25 +552,59 @@ class _HospitalFormState extends State<HospitalForm> {
               // Upload Logo
               Text("Upload Hospital Logo", style: labelStyle),
               const SizedBox(height: 8),
-              SizedBox(
-                height: 45,
-                child: OutlinedButton.icon(
-                  onPressed: pickImage,
-                  icon: const Icon(Icons.upload_file),
-                  label: Text(
-                    hospitalLogo == null
-                        ? "Upload your image"
-                        : "Image selected",
-                    style: GoogleFonts.poppins(fontSize: 14),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.grey),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              hospitalLogo != null
+                  ? Center(
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              hospitalLogo!,
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 5,
+                            right: 5,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  hospitalLogo = null;
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close,
+                                    color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : SizedBox(
+                      height: 45,
+                      child: OutlinedButton.icon(
+                        onPressed: pickImage,
+                        icon: const Icon(Icons.upload_file),
+                        label: Text(
+                          "Upload your image",
+                          style: GoogleFonts.poppins(fontSize: 14),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.grey),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
               const SizedBox(height: 15),
 
               // 🏥 Facility Category Dropdown
@@ -807,34 +837,36 @@ class _HospitalFormState extends State<HospitalForm> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            onPressed: handleSubmit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFADE1FF),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
               ),
-            ),
-            child: Text(
-              "Submit",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
+            ],
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: handleSubmit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFADE1FF),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                "Submit",
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
