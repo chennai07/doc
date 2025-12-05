@@ -698,6 +698,8 @@ class ApplicantsListPage extends StatelessWidget {
                 final status = (a['status'] ?? 'Pending').toString();
                 final isShortlisted = status.toLowerCase() == 'shortlisted';
 
+                final profilePic = (a['profilePic'] ?? a['profileImage'] ?? '').toString();
+
                 return Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -729,23 +731,74 @@ class ApplicantsListPage extends StatelessWidget {
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE0F0FF),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                  style: GoogleFonts.poppins(
-                                    color: const Color(0xFF0062FF),
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: profilePic.isNotEmpty
+                                  ? (profilePic.startsWith('http')
+                                      ? Image.network(
+                                          profilePic,
+                                          width: 50,
+                                          height: 50,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              width: 50,
+                                              height: 50,
+                                              color: const Color(0xFFE0F0FF),
+                                              child: Center(
+                                                child: Text(
+                                                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                                  style: GoogleFonts.poppins(
+                                                    color: const Color(0xFF0062FF),
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : Image.asset(
+                                          profilePic, // Assuming asset path if not http
+                                          width: 50,
+                                          height: 50,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return Container(
+                                              width: 50,
+                                              height: 50,
+                                              color: const Color(0xFFE0F0FF),
+                                              child: Center(
+                                                child: Text(
+                                                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                                  style: GoogleFonts.poppins(
+                                                    color: const Color(0xFF0062FF),
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ))
+                                  : Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE0F0FF),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                          style: GoogleFonts.poppins(
+                                            color: const Color(0xFF0062FF),
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -1031,6 +1084,8 @@ class _ApplicantProfilePageState extends State<ApplicantProfilePage> {
         profile != null && profile.name.isNotEmpty ? profile.name : fullNameFromApp;
     final speciality = profile?.speciality ?? '';
 
+    final profilePic = (profile?.profilePicture ?? widget.applicant['profilePic'] ?? widget.applicant['profileImage'] ?? '').toString();
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -1053,22 +1108,59 @@ class _ApplicantProfilePageState extends State<ApplicantProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE0F0FF),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
-                    style: GoogleFonts.poppins(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0062FF),
-                    ),
-                  ),
+              child: ClipOval(
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  color: const Color(0xFFE0F0FF),
+                  child: profilePic.isNotEmpty
+                      ? (profilePic.startsWith('http')
+                          ? Image.network(
+                              profilePic,
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Text(
+                                    displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF0062FF),
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              profilePic,
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Text(
+                                    displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF0062FF),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ))
+                      : Center(
+                          child: Text(
+                            displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                            style: GoogleFonts.poppins(
+                              fontSize: 40,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF0062FF),
+                            ),
+                          ),
+                        ),
                 ),
               ),
             ),

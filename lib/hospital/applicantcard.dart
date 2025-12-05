@@ -12,6 +12,7 @@ class ApplicantCard extends StatelessWidget {
 
   final String imagePath;
   final String? jobTitle; // Added for the new design
+  final bool showImage;
 
   const ApplicantCard({
     super.key,
@@ -26,6 +27,7 @@ class ApplicantCard extends StatelessWidget {
     this.onReviewTap,
     required Null Function() onViewProfileTap,
     this.jobTitle,
+    this.showImage = true,
   });
 
   @override
@@ -51,40 +53,60 @@ class ApplicantCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ----------- PROFILE IMAGE -----------
-            ClipRRect(
-              borderRadius: BorderRadius.circular(50),
-              child: imagePath.isEmpty
-                  ? Container(
-                      width: 60,
-                      height: 60,
-                      color: Colors.grey.shade200,
-                      child: const Icon(
-                        Icons.person,
-                        size: 32,
-                        color: Colors.grey,
-                      ),
-                    )
-                  : Image.asset(
-                      imagePath,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 60,
-                          height: 60,
-                          color: Colors.grey.shade200,
-                          child: const Icon(
-                            Icons.person,
-                            size: 32,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
-                    ),
-            ),
-
-            const SizedBox(width: 18),
+            if (showImage) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(50),
+                child: imagePath.isEmpty
+                    ? Container(
+                        width: 60,
+                        height: 60,
+                        color: Colors.grey.shade200,
+                        child: const Icon(
+                          Icons.person,
+                          size: 32,
+                          color: Colors.grey,
+                        ),
+                      )
+                    : (imagePath.startsWith('http')
+                        ? Image.network(
+                            imagePath,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 60,
+                                height: 60,
+                                color: Colors.grey.shade200,
+                                child: const Icon(
+                                  Icons.person,
+                                  size: 32,
+                                  color: Colors.grey,
+                                ),
+                              );
+                            },
+                          )
+                        : Image.asset(
+                            imagePath,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 60,
+                                height: 60,
+                                color: Colors.grey.shade200,
+                                child: const Icon(
+                                  Icons.person,
+                                  size: 32,
+                                  color: Colors.grey,
+                                ),
+                              );
+                            },
+                          )),
+              ),
+              const SizedBox(width: 18),
+            ],
 
             // ----------- DETAILS SECTION -----------
             Expanded(

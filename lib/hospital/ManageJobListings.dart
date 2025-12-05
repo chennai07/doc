@@ -152,11 +152,14 @@ class _ManageJobListingsState extends State<ManageJobListings> {
               if (applicantObj is! Map) {
                 applicantObj = m;
               }
+              
+              print('👥 Applicant Object: $applicantObj'); // Added logging
 
               final firstName = (applicantObj['firstName'] ?? applicantObj['name'] ?? '').toString();
               final lastName = (applicantObj['lastName'] ?? '').toString();
               final name = [firstName, lastName].where((s) => s.isNotEmpty).join(' ').trim();
               final location = (applicantObj['location'] ?? '').toString();
+              final profilePic = (applicantObj['profilePic'] ?? applicantObj['profileImage'] ?? '').toString();
               
               // Extract Application Details
               final status = (m['status'] ?? 'Applied').toString();
@@ -168,6 +171,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
               applicantMap['jobId'] = jobId;
               applicantMap['applicantName'] = name;
               applicantMap['applicantLocation'] = location;
+              applicantMap['profilePic'] = profilePic;
               applicantMap['status'] = status;
               applicantMap['appliedOn'] = createdRaw;
 
@@ -723,6 +727,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
     final appliedOn = createdRaw.contains('T')
         ? createdRaw.split('T').first
         : createdRaw;
+    final profilePic = (a['profilePic'] ?? '').toString();
 
     Color tagColor;
     switch (status.toLowerCase()) {
@@ -744,7 +749,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
       currentRole: '', // You can map this to something else if needed
       tag: status.isNotEmpty ? status : 'N/A',
       tagColor: tagColor,
-      imagePath: '',
+      imagePath: profilePic,
       jobTitle: jobTitle.isNotEmpty ? jobTitle : 'Applied Position',
       onReviewTap: () {
         Navigator.push(

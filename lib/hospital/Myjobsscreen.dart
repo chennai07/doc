@@ -565,6 +565,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
       tag: status,
       tagColor: tagColor,
       imagePath: 'assets/logo.png',
+      showImage: false,
       onReviewTap: () {
         Navigator.push(
           context,
