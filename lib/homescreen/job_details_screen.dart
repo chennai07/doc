@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'package:doc/utils/colors.dart';
 import 'package:doc/utils/session_manager.dart';
+import 'package:get/get.dart';
 
 void _showSuccessDialog(BuildContext context) {
   showDialog(
@@ -315,6 +317,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     String selectedLocation = 'Bangalore, India';
     PlatformFile? selectedFile;
     String? selectedFileName;
+    bool isFetchingCv = false;
 
     showDialog(
       context: context,
@@ -433,22 +436,178 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                       'Upload CV/Resume',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        final result = await FilePicker.platform.pickFiles(
-                          type: FileType.custom,
-                          allowedExtensions: ['pdf', 'doc', 'docx'],
-                        );
-                        if (result != null && result.files.isNotEmpty) {
-                          setState(() {
-                            selectedFile = result.files.first;
-                            selectedFileName = selectedFile!.name;
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.attach_file, size: 18),
-                      label: Text(selectedFileName ?? 'Choose File'),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        // Manual Upload Button
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () async {
+                              final result =
+                                  await FilePicker.platform.pickFiles(
+                                type: FileType.custom,
+                                allowedExtensions: ['pdf', 'doc', 'docx'],
+                              );
+                              if (result != null && result.files.isNotEmpty) {
+                                setState(() {
+                                  selectedFile = result.files.first;
+                                  selectedFileName = selectedFile!.name;
+                                });
+                              }
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              side: const BorderSide(color: Colors.black54),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    selectedFileName ?? 'CV/Resume',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.black54,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.upload_file,
+                                    size: 20, color: Colors.black54),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Fetch from Profile Button
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: isFetchingCv
+                                ? null
+                                : () async {
+                                    setState(() {
+                                      isFetchingCv = true;
+                                    });
+                                    try {
+                                      final pid =
+                                          await SessionManager.getProfileId();
+                                      if (pid == null) {
+                                        throw 'Profile ID not found';
+                                      }
+                                      final url = Uri.parse(
+                                          'http://13.203.67.154:3000/api/sugeon/profile-info/$pid');
+                                      final response = await http.get(url);
+                                      if (response.statusCode == 200) {
+                                        final data = jsonDecode(response.body);
+                                        final p = data['data'] is Map &&
+                                                data['data']['profile'] != null
+                                            ? data['data']['profile']
+                                            : (data['data'] is Map
+                                                ? data['data']
+                                                : {});
+                                        final cvUrl = p['cv'];
+                                        if (cvUrl != null &&
+                                            cvUrl.toString().isNotEmpty) {
+                                          // Download CV
+                                          final cvUri = Uri.parse(cvUrl);
+                                          final cvRes = await http.get(cvUri);
+                                          if (cvRes.statusCode == 200) {
+                                            final tempDir =
+                                                Directory.systemTemp;
+                                            final fileName = cvUrl
+                                                .toString()
+                                                .split('/')
+                                                .last;
+                                            final tempFile = File(
+                                                '${tempDir.path}/$fileName');
+                                            await tempFile.writeAsBytes(
+                                                cvRes.bodyBytes);
+
+                                            setState(() {
+                                              selectedFile = PlatformFile(
+                                                name: fileName,
+                                                path: tempFile.path,
+                                                size: tempFile.lengthSync(),
+                                              );
+                                              selectedFileName = fileName;
+                                            });
+
+                                            Get.snackbar(
+                                              'Success',
+                                              'CV fetched from profile!',
+                                              snackPosition: SnackPosition.TOP,
+                                              backgroundColor: Colors.green,
+                                              colorText: Colors.white,
+                                              margin: const EdgeInsets.all(10),
+                                              borderRadius: 8,
+                                              duration:
+                                                  const Duration(seconds: 2),
+                                            );
+                                          } else {
+                                            throw 'Failed to download CV';
+                                          }
+                                        } else {
+                                          Get.snackbar(
+                                            'Info',
+                                            'CV not found in profile',
+                                            snackPosition: SnackPosition.TOP,
+                                            backgroundColor: Colors.orange,
+                                            colorText: Colors.white,
+                                            margin: const EdgeInsets.all(10),
+                                            borderRadius: 8,
+                                            duration:
+                                                const Duration(seconds: 3),
+                                          );
+                                        }
+                                      } else {
+                                        throw 'Failed to fetch profile info';
+                                      }
+                                    } catch (e) {
+                                      Get.snackbar(
+                                        'Error',
+                                        e.toString(),
+                                        snackPosition: SnackPosition.TOP,
+                                        backgroundColor: Colors.red,
+                                        colorText: Colors.white,
+                                        margin: const EdgeInsets.all(10),
+                                        borderRadius: 8,
+                                        duration: const Duration(seconds: 3),
+                                      );
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() {
+                                          isFetchingCv = false;
+                                        });
+                                      }
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0062FF),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: isFetchingCv
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        color: Colors.white, strokeWidth: 2))
+                                : const Text(
+                                    'Fetch from Profile',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
                     if (selectedFileName != null) ...[
                       const SizedBox(height: 6),
