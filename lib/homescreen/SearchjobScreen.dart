@@ -306,54 +306,71 @@ class _SearchScreenState extends State<SearchScreen> {
         child: Stack(
           children: [
             /// ✅ Main content
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+            /// ✅ Main content
+            NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                          left: 20, right: 20, top: 10, bottom: 10),
+                      child: Center(
+                        child: Image.asset(
+                          'assets/logo2.png',
+                          height: 80,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Column(
+                              children: [
+                                Icon(Icons.image_not_supported,
+                                    size: 40, color: Colors.grey),
+                                Text("Surgeon Search",
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ];
+              },
+              body: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Image.asset(
-                        'assets/logo2.png',
-                        height: 80,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Column(
-                            children: [
-                              Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                              Text("Surgeon Search", style: TextStyle(fontWeight: FontWeight.bold)),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 10),
                     _buildSearchBar(),
                     const SizedBox(height: 15),
                     _buildFilterRow(),
                     const SizedBox(height: 15),
-
-                    if (_hasActiveFilters()) _buildFilterChips(),
-                    const SizedBox(height: 25),
-
-                    SectionHeader(title: "${_filteredJobs.length} Results"),
-                    const SizedBox(height: 10),
-
-                    _filteredJobs.isEmpty
-                        ? const Padding(
-                            padding: EdgeInsets.all(40.0),
-                            child: Center(
-                              child: Text(
-                                "No jobs found",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 16,
+                    if (_hasActiveFilters()) ...[
+                      _buildFilterChips(),
+                      const SizedBox(height: 25),
+                    ],
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.only(bottom: 100),
+                        physics: const BouncingScrollPhysics(),
+                        children: [
+                          SectionHeader(
+                              title: "${_filteredJobs.length} Results"),
+                          const SizedBox(height: 10),
+                          if (_filteredJobs.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(40.0),
+                              child: Center(
+                                child: Text(
+                                  "No jobs found",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
-                            ),
-                          )
-                        : Column(
-                            children: _filteredJobs.map((job) {
+                            )
+                          else
+                            ..._filteredJobs.map((job) {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 15),
                                 child: JobCard(
@@ -369,7 +386,8 @@ class _SearchScreenState extends State<SearchScreen> {
                                   onTap: () {
                                     final id = (job['id'] ?? '').toString();
                                     if (id.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         const SnackBar(
                                           content: Text(
                                             'Job id missing. Please try another job.',
@@ -390,8 +408,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                 ),
                               );
                             }).toList(),
-                          ),
-                    const SizedBox(height: 100), // space for sticky button
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -188,12 +188,15 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
               ?.toString()
               .trim();
 
+          final logoUrl = rawJob['hospitalLogo']?.toString();
+
           jobs.add({
             'title': title.isNotEmpty ? title : 'Unknown Role',
             'org': org.isNotEmpty ? org : 'Healthcare Organization',
             'location': location.isNotEmpty ? location : 'Location not specified',
             'status': statusValue ?? 'Applied',
             'description': desc.isNotEmpty ? desc : 'No description available for this position.',
+            'logo': logoUrl,
           });
         }
 
@@ -375,21 +378,39 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
   }
 
   Widget _buildJobCard(Map<String, dynamic> job) {
-    final status = job['status'].toString();
-    
-    // Determine status color and text
-    Color statusColor = const Color(0xFF6C63FF); // Default purple (Applied)
-    String statusText = status;
+    final rawStatus = job['status'].toString();
+    final statusLower = rawStatus.toLowerCase();
 
-    if (status.toLowerCase().contains('interview')) {
+    // Determine status color and text
+    Color statusColor;
+    String statusText;
+
+    if (statusLower.contains('interview')) {
       statusColor = const Color(0xFF00C853); // Green for Interview
       statusText = "Interview Scheduled";
-    } else if (status.toLowerCase().contains('reject')) {
+    } else if (statusLower.contains('reject') ||
+        statusLower.contains('declined')) {
       statusColor = const Color(0xFFFF3B30); // Red for Rejected
-      statusText = "Application Rejected";
-    } else {
+      statusText = "Rejected";
+    } else if (statusLower.contains('shortlist')) {
+      statusColor = const Color(0xFFFFAB00); // Amber for Shortlisted
+      statusText = "Shortlisted";
+    } else if (statusLower.contains('hired') ||
+        statusLower.contains('offer') ||
+        statusLower.contains('accepted')) {
+      statusColor = const Color(0xFF00C853); // Green for Hired/Offer
+      statusText = "Offer Received";
+    } else if (statusLower == 'applied') {
       statusColor = const Color(0xFF0062FF); // Blue for Applied
       statusText = "Applied";
+    } else {
+      statusColor = const Color(0xFF0062FF); // Blue for others
+      // Capitalize first letter of the status
+      if (rawStatus.isNotEmpty) {
+        statusText = rawStatus[0].toUpperCase() + rawStatus.substring(1);
+      } else {
+        statusText = "Applied";
+      }
     }
 
     return Container(
@@ -422,14 +443,26 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
                   shape: BoxShape.circle,
                   color: Colors.white,
                   border: Border.all(color: Colors.grey.shade200),
+                  image: job['logo'] != null &&
+                          job['logo'].toString().isNotEmpty &&
+                          !job['logo'].toString().contains('null')
+                      ? DecorationImage(
+                          image: NetworkImage(job['logo']),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Image.asset('assets/logo.png'), // Placeholder logo
-                ),
+                child: job['logo'] == null ||
+                        job['logo'].toString().isEmpty ||
+                        job['logo'].toString().contains('null')
+                    ? Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Image.asset('assets/logo.png'),
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
-              
+
               // Info
               Expanded(
                 child: Column(

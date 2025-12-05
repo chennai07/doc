@@ -627,7 +627,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
 }
 
 // ----------------- ApplicantsListPage -----------------
-class ApplicantsListPage extends StatelessWidget {
+class ApplicantsListPage extends StatefulWidget {
   final String jobId;
   final String jobTitle;
   final List<Map<String, dynamic>> applicants;
@@ -638,6 +638,87 @@ class ApplicantsListPage extends StatelessWidget {
     required this.jobTitle,
     required this.applicants,
   });
+
+  @override
+  State<ApplicantsListPage> createState() => _ApplicantsListPageState();
+}
+
+class _ApplicantsListPageState extends State<ApplicantsListPage> {
+  late List<Map<String, dynamic>> _applicants;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _applicants = widget.applicants;
+  }
+
+  Future<void> _fetchApplicants() async {
+    setState(() => _isLoading = true);
+    try {
+      final uri = Uri.parse(
+        'http://13.203.67.154:3000/api/jobs/applied-jobs/specific-jobs/${widget.jobId}',
+      );
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final body = response.body.trimLeft();
+        dynamic decoded;
+        try {
+          decoded = jsonDecode(body);
+        } catch (_) {
+          decoded = [];
+        }
+
+        final data = decoded is Map && decoded['data'] != null
+            ? decoded['data']
+            : decoded;
+        final list = data is List
+            ? data
+            : (data is Map && data['applications'] is List
+                ? data['applications']
+                : <dynamic>[]);
+
+        final applicants = <Map<String, dynamic>>[];
+        for (final item in list) {
+          if (item is! Map) continue;
+          final m = item;
+          final rawApplicant =
+              m['applicant'] is Map ? m['applicant'] as Map : m;
+          applicants.add(Map<String, dynamic>.from(rawApplicant as Map));
+        }
+
+        if (mounted) {
+          setState(() {
+            _applicants = applicants;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _buildInitials(String name) {
+    return Container(
+      width: 50,
+      height: 50,
+      color: const Color(0xFFE0F0FF),
+      child: Center(
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: GoogleFonts.poppins(
+            color: const Color(0xFF0062FF),
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -660,205 +741,174 @@ class ApplicantsListPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: applicants.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Iconsax.people, size: 64, color: Colors.grey[300]),
-                  const SizedBox(height: 16),
-                  Text(
-                    "No applicants yet",
-                    style: GoogleFonts.poppins(
-                      color: Colors.grey[500],
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: applicants.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final a = applicants[index];
-                final firstName = (a['firstName'] ?? a['name'] ?? '').toString();
-                final lastName = (a['lastName'] ?? '').toString();
-                final name = [firstName, lastName]
-                    .where((s) => s.isNotEmpty)
-                    .join(' ')
-                    .trim();
-                final experience = (a['experience'] ?? '').toString();
-                final createdRaw =
-                    (a['createdAt'] ?? a['appliedOn'] ?? '').toString();
-                final appliedOn = createdRaw.contains('T')
-                    ? createdRaw.split('T').first
-                    : createdRaw;
-                final status = (a['status'] ?? 'Pending').toString();
-                final isShortlisted = status.toLowerCase() == 'shortlisted';
-
-                final profilePic = (a['profilePic'] ?? a['profileImage'] ?? '').toString();
-
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _applicants.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Iconsax.people, size: 64, color: Colors.grey[300]),
+                      const SizedBox(height: 16),
+                      Text(
+                        "No applicants yet",
+                        style: GoogleFonts.poppins(
+                          color: Colors.grey[500],
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ApplicantProfilePage(
-                              applicant: a,
-                              jobId: jobId,
-                            ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _applicants.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final a = _applicants[index];
+                    final firstName =
+                        (a['firstName'] ?? a['name'] ?? '').toString();
+                    final lastName = (a['lastName'] ?? '').toString();
+                    final name = [firstName, lastName]
+                        .where((s) => s.isNotEmpty)
+                        .join(' ')
+                        .trim();
+                    final createdRaw =
+                        (a['createdAt'] ?? a['appliedOn'] ?? '').toString();
+                    final appliedOn = createdRaw.contains('T')
+                        ? createdRaw.split('T').first
+                        : createdRaw;
+                    final status = (a['status'] ?? 'Pending').toString();
+                    final isShortlisted = status.toLowerCase() == 'shortlisted';
+
+                    final profilePic =
+                        (a['profilePic'] ?? a['profileImage'] ?? '').toString();
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: profilePic.isNotEmpty
-                                  ? (profilePic.startsWith('http')
-                                      ? Image.network(
-                                          profilePic,
-                                          width: 50,
-                                          height: 50,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return Container(
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ApplicantProfilePage(
+                                  applicant: a,
+                                  jobId: widget.jobId,
+                                ),
+                              ),
+                            );
+                            if (result == true) {
+                              _fetchApplicants();
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: profilePic.isNotEmpty
+                                      ? (profilePic.startsWith('http')
+                                          ? Image.network(
+                                              profilePic,
                                               width: 50,
                                               height: 50,
-                                              color: const Color(0xFFE0F0FF),
-                                              child: Center(
-                                                child: Text(
-                                                  name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                                  style: GoogleFonts.poppins(
-                                                    color: const Color(0xFF0062FF),
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        )
-                                      : Image.asset(
-                                          profilePic, // Assuming asset path if not http
-                                          width: 50,
-                                          height: 50,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return Container(
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                return _buildInitials(name);
+                                              },
+                                            )
+                                          : Image.asset(
+                                              profilePic,
                                               width: 50,
                                               height: 50,
-                                              color: const Color(0xFFE0F0FF),
-                                              child: Center(
-                                                child: Text(
-                                                  name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                                  style: GoogleFonts.poppins(
-                                                    color: const Color(0xFF0062FF),
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ))
-                                  : Container(
-                                      width: 50,
-                                      height: 50,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE0F0FF),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                          style: GoogleFonts.poppins(
-                                            color: const Color(0xFF0062FF),
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    name.isNotEmpty ? name : 'Unknown Candidate',
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                return _buildInitials(name);
+                                              },
+                                            ))
+                                      : _buildInitials(name),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(Iconsax.calendar_1,
-                                          size: 14, color: Colors.grey[500]),
-                                      const SizedBox(width: 4),
                                       Text(
-                                        appliedOn.isNotEmpty ? appliedOn : "N/A",
+                                        name.isNotEmpty
+                                            ? name
+                                            : 'Unknown Candidate',
                                         style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                          color: Colors.black87,
                                         ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(Iconsax.calendar_1,
+                                              size: 14,
+                                              color: Colors.grey[500]),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            appliedOn.isNotEmpty
+                                                ? appliedOn
+                                                : "N/A",
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: isShortlisted
-                                    ? const Color(0xFFE8F5E9)
-                                    : const Color(0xFFFFF3E0),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                status.isNotEmpty ? status : 'Pending',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: isShortlisted
-                                      ? Colors.green[700]
-                                      : Colors.orange[800],
                                 ),
-                              ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: isShortlisted
+                                        ? const Color(0xFFE8F5E9)
+                                        : const Color(0xFFFFF3E0),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    status.isNotEmpty ? status : 'Pending',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: isShortlisted
+                                          ? Colors.green[700]
+                                          : Colors.orange[800],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
     );
   }
 }
@@ -1000,7 +1050,7 @@ class _ApplicantProfilePageState extends State<ApplicantProfilePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Application rejected')),
           );
-          Navigator.pop(context); // Go back to list
+          Navigator.pop(context, true); // Go back to list with success flag
         }
       } else {
         if (mounted) {
