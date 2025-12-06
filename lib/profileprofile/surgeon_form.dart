@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:google_fonts/google_fonts.dart';
@@ -110,6 +111,7 @@ const Map<String, List<String>> surgicalSpecialities = {
     'Musculoskeletal Interventions',
     'Thyroid/Uterine artery embolisation',
   ],
+  'Interventionists': [],
 };
 
 class SurgeonForm extends StatefulWidget {
@@ -551,44 +553,48 @@ Widget titleText(String text) => Padding(
               fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black)),
     );
 
-Future<void> pickProfileImage() async {
-  final result = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['jpg', 'jpeg', 'png'],
-  );
-  if (result != null) {
-    final originalFile = File(result.files.single.path!);
-    final fileSize = await originalFile.length();
-    
-    // If file > 1MB, compress it
-    if (fileSize > 1024 * 1024) {
-      try {
-        final dir = await Directory.systemTemp.createTemp();
-        final targetPath = "${dir.path}/${p.basename(originalFile.path)}";
+  Future<void> pickProfileImage() async {
+    _pickImage(ImageSource.gallery);
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picked = await ImagePicker().pickImage(source: source);
+      if (picked != null) {
+        final originalFile = File(picked.path);
+        final fileSize = await originalFile.length();
         
-        final compressedFile = await FlutterImageCompress.compressAndGetFile(
-          originalFile.path,
-          targetPath,
-          quality: 70, // Adjust quality as needed
-          minWidth: 800,
-          minHeight: 800,
-        );
-        
-        if (compressedFile != null) {
-          setState(() => profilePic = File(compressedFile.path));
+        // If file > 1MB, compress it
+        if (fileSize > 1024 * 1024) {
+          try {
+            final dir = await Directory.systemTemp.createTemp();
+            final targetPath = "${dir.path}/${p.basename(originalFile.path)}";
+            
+            final compressedFile = await FlutterImageCompress.compressAndGetFile(
+              originalFile.path,
+              targetPath,
+              quality: 70, // Adjust quality as needed
+              minWidth: 800,
+              minHeight: 800,
+            );
+            
+            if (compressedFile != null) {
+              setState(() => profilePic = File(compressedFile.path));
+            } else {
+              setState(() => profilePic = originalFile);
+            }
+          } catch (e) {
+            print("Error compressing image: $e");
+            setState(() => profilePic = originalFile);
+          }
         } else {
-          // Fallback to original if compression fails
           setState(() => profilePic = originalFile);
         }
-      } catch (e) {
-        print("Error compressing image: $e");
-        setState(() => profilePic = originalFile);
       }
-    } else {
-      setState(() => profilePic = originalFile);
+    } catch (e) {
+      print("Error picking image: $e");
     }
   }
-}
 
 Future<void> pickCVFile() async {
   final result = await FilePicker.platform
@@ -630,7 +636,6 @@ void removeWorkExperience(int index) {
     workExperiences.removeAt(index);
     // Dispose controllers before removing
     for (var controller in workExpControllers[index]) {
-      controller.dispose();
     }
     workExpControllers.removeAt(index);
   });
@@ -647,6 +652,86 @@ void _updateWorkExperienceData() {
     };
   }
 }
+
+  Future<void> _handleSkip() async {
+    // Ensure work exp data is up to date
+    _updateWorkExperienceData();
+
+    // 1. Validate 'Required for Skip' fields
+    final bool hasName = fullName.text.trim().isNotEmpty;
+    final bool hasEmail = email.text.trim().isNotEmpty;
+    final bool hasPic = profilePic != null || (profilePicUrl != null && profilePicUrl!.isNotEmpty);
+    // For CV, we check if file is selected OR url exists
+    final bool hasCv = cv != null || (cvUrl != null && cvUrl!.isNotEmpty);
+    
+    // Check work experience (at least one valid entry)
+    // We consider it valid if at least desig & org are not empty
+    final bool hasWorkExp = workExperiences.any((w) => 
+      (w['designation']?.toString().trim().isNotEmpty == true) && 
+      (w['healthcareOrganization']?.toString().trim().isNotEmpty == true)
+    );
+
+    if (!hasName || !hasEmail || !hasPic || !hasCv || !hasWorkExp) {
+      Get.snackbar(
+        "Required Fields Missing", 
+        "To skip, you must provide: Name, Email, Profile Picture, Work Experience, and CV.",
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+
+    // 2. Perform 'Partial Submit' / Claim Trial
+    setState(() => isLoading = true);
+
+    try {
+      final result = await ApiService.createProfile(
+        fullName: fullName.text,
+        phoneNumber: phoneNumber.text,
+        email: email.text,
+        location: location.text,
+        degree: degree.text,
+        speciality: speciality.text,
+        subSpeciality: subSpeciality.text,
+        summaryProfile: summary.text,
+        termsAccepted: true, // Assuming skip implies partial acceptance
+        profileId: widget.profileId,
+        portfolioLinks: portfolio.text,
+        workExperience: workExperiences,
+        departmentsAvailable: const [],
+        imageFile: profilePic,
+        cvFile: cv,
+        highestDegreeFile: highestDegree,
+        logBookFile: logBook,
+        yearsOfExperience: experience.text,
+        surgicalExperience: selectedSurgicalExperience ?? '',
+        state: selectedState ?? stateCtrl.text,
+        district: selectedDistrict ?? districtCtrl.text,
+      );
+
+      if (result['success'] == true) {
+        hasProfile = true;
+        // Save Free Trial Flag
+        await SessionManager.saveFreeTrialFlag(true);
+        
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SubscriptionPlanScreen(),
+            ),
+          );
+        }
+      } else {
+        Get.snackbar("Error", result['message']?.toString() ?? 'Failed to save profile');
+      }
+    } catch (e) {
+      Get.snackbar("Error", e.toString());
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
 
 @override
 void dispose() {
@@ -675,7 +760,7 @@ void dispose() {
   super.dispose();
 }
 
-  Future<void> _selectYear(BuildContext context, TextEditingController controller) async {
+  Future<void> _selectYear(BuildContext context, TextEditingController controller, {int? minYear}) async {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -685,9 +770,9 @@ void dispose() {
             width: 300,
             height: 300,
             child: YearPicker(
-              firstDate: DateTime(1950),
+              firstDate: minYear != null ? DateTime(minYear) : DateTime(1950),
               lastDate: DateTime.now(),
-              selectedDate: DateTime.now(),
+              selectedDate: minYear != null ? DateTime(minYear) : DateTime.now(),
               onChanged: (DateTime dateTime) {
                 controller.text = dateTime.year.toString();
                 Navigator.pop(context);
@@ -730,12 +815,7 @@ Widget build(BuildContext context) {
       elevation: 0,
       actions: [
         TextButton(
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const SearchScreen()),
-            );
-          },
+          onPressed: _handleSkip,
           child: const Text(
             "Skip",
             style: TextStyle(
@@ -1080,14 +1160,29 @@ Widget build(BuildContext context) {
                                 Expanded(child: TextFormField(
                                   controller: controllers[2],
                                   readOnly: true,
-                                  onTap: () => _selectYear(context, controllers[2]),
+                                  onTap: () async {
+                                    await _selectYear(context, controllers[2]);
+                                    // Clear 'To' year if 'From' changes to ensure validity
+                                    setState(() {
+                                      controllers[3].clear();
+                                    });
+                                  },
                                   decoration: inputDecoration("From (Year)"),
                                 )),
                                 const SizedBox(width: 10),
                                 Expanded(child: TextFormField(
                                   controller: controllers[3],
                                   readOnly: true,
-                                  onTap: () => _selectYear(context, controllers[3]),
+                                  onTap: () {
+                                    int? startYear = int.tryParse(controllers[2].text);
+                                    if (startYear == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text("Please select Start Year first")),
+                                      );
+                                      return;
+                                    }
+                                    _selectYear(context, controllers[3], minYear: startYear);
+                                  },
                                   decoration: inputDecoration("To (Year)"),
                                 )),
                               ],

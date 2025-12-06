@@ -7,6 +7,7 @@ import 'package:doc/utils/session_manager.dart';
 import 'package:doc/utils/colors.dart';
 import 'package:doc/homescreen/SearchjobScreen.dart';
 import 'package:doc/profileprofile/surgeon_profile.dart';
+import 'package:doc/homescreen/AppliedJobDetailsScreen.dart';
 
 class AppliedJobsScreen extends StatefulWidget {
   const AppliedJobsScreen({super.key});
@@ -191,6 +192,7 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
           final logoUrl = rawJob['hospitalLogo']?.toString();
 
           jobs.add({
+            'id': jobId, // Store ID for navigation
             'title': title.isNotEmpty ? title : 'Unknown Role',
             'org': org.isNotEmpty ? org : 'Healthcare Organization',
             'location': location.isNotEmpty ? location : 'Location not specified',
@@ -413,125 +415,142 @@ class _AppliedJobsScreenState extends State<AppliedJobsScreen> {
       }
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top Row: Logo + Info
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Logo
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: Colors.grey.shade200),
-                  image: job['logo'] != null &&
-                          job['logo'].toString().isNotEmpty &&
-                          !job['logo'].toString().contains('null')
-                      ? DecorationImage(
-                          image: NetworkImage(job['logo']),
-                          fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () {
+        final jobId = job['id'];
+        if (jobId != null && jobId.toString().isNotEmpty) {
+           Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AppliedJobDetailsScreen(jobId: jobId.toString()),
+            ),
+          );
+        } else {
+           ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Job details not available')),
+            );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Row: Logo + Info
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Logo
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    border: Border.all(color: Colors.grey.shade200),
+                    image: job['logo'] != null &&
+                            job['logo'].toString().isNotEmpty &&
+                            !job['logo'].toString().contains('null')
+                        ? DecorationImage(
+                            image: NetworkImage(job['logo']),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: job['logo'] == null ||
+                          job['logo'].toString().isEmpty ||
+                          job['logo'].toString().contains('null')
+                      ? Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Image.asset('assets/logo.png'),
                         )
                       : null,
                 ),
-                child: job['logo'] == null ||
-                        job['logo'].toString().isEmpty ||
-                        job['logo'].toString().contains('null')
-                    ? Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Image.asset('assets/logo.png'),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
 
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      job['title'],
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0062FF), // Blue color
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        job['title'],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0062FF), // Blue color
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      job['org'],
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                      const SizedBox(height: 4),
+                      Text(
+                        job['org'],
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      job['location'],
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
+                      const SizedBox(height: 4),
+                      Text(
+                        job['location'],
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Description
+            Text(
+              job['description'],
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+                height: 1.4,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Status Button
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: statusColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                statusText,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Description
-          Text(
-            job['description'],
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Colors.black54,
-              height: 1.4,
             ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Status Button
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: statusColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              statusText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

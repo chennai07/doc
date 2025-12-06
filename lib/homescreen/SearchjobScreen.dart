@@ -764,7 +764,7 @@ class _FilterDialogContentState extends State<FilterDialogContent> {
         
     specialities = widget.availableSpecialities.isNotEmpty 
         ? widget.availableSpecialities 
-        : ["Neuro Surgery", "Orthopedic", "Spine Surgery", "General Surgery", "Cardiology", "Dermatology"];
+        : ["Neuro Surgery", "Orthopedic", "Spine Surgery", "General Surgery", "Cardiology", "Dermatology", "Interventionists"];
         
     subSpecialities = widget.availableSubSpecialities.isNotEmpty 
         ? widget.availableSubSpecialities 
@@ -785,186 +785,209 @@ class _FilterDialogContentState extends State<FilterDialogContent> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.white, // ✅ Added white background
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.all(20),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Filter by:",
-                style: TextStyle(fontSize: 14, color: Colors.black54),
-              ),
-              const SizedBox(height: 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Sticky Header with Close Button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 8, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Filter by:",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                  color: Colors.grey,
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
 
-              /// 📍 Location Filters
-              Wrap(
-                spacing: 8,
-                children: locations.map((loc) {
-                  final sel = selectedLocation == loc;
-                  return ChoiceChip(
-                    label: Text(loc),
-                    selected: sel,
-                    selectedColor: AppColors.primary,
-                    backgroundColor: AppColors.white,
-                    labelStyle: TextStyle(
-                      color: sel ? Colors.white : Colors.black87,
-                    ),
-                    onSelected: (_) =>
-                        setState(() => selectedLocation = sel ? null : loc),
-                    shape: StadiumBorder(
-                      side: BorderSide(color: AppColors.primary),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
+          // Scrollable Content
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /// 📍 Location Filters
+                  Wrap(
+                    spacing: 8,
+                    children: locations.map((loc) {
+                      final sel = selectedLocation == loc;
+                      return ChoiceChip(
+                        label: Text(loc),
+                        selected: sel,
+                        selectedColor: AppColors.primary,
+                        backgroundColor: AppColors.white,
+                        labelStyle: TextStyle(
+                          color: sel ? Colors.white : Colors.black87,
+                        ),
+                        onSelected: (_) =>
+                            setState(() => selectedLocation = sel ? null : loc),
+                        shape: StadiumBorder(
+                          side: BorderSide(color: AppColors.primary),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
 
-              /// 🩺 Speciality Dropdown
-              _buildDropdown(
-                "Speciality",
-                selectedSpeciality,
-                specialities,
-                (val) => setState(() => selectedSpeciality = val),
-              ),
-              const SizedBox(height: 12),
+                  /// 🩺 Speciality Dropdown
+                  _buildDropdown(
+                    "Speciality",
+                    selectedSpeciality,
+                    specialities,
+                    (val) => setState(() => selectedSpeciality = val),
+                  ),
+                  const SizedBox(height: 12),
 
-              /// 🧬 Sub-speciality Dropdown
-              _buildDropdown(
-                "Sub-speciality",
-                selectedSubSpeciality,
-                subSpecialities,
-                (val) => setState(() => selectedSubSpeciality = val),
-              ),
-              const SizedBox(height: 12),
+                  /// 🧬 Sub-speciality Dropdown
+                  _buildDropdown(
+                    "Sub-speciality",
+                    selectedSubSpeciality,
+                    subSpecialities,
+                    (val) => setState(() => selectedSubSpeciality = val),
+                  ),
+                  const SizedBox(height: 12),
 
-              /// 🧩 Position Type
-              const Text(
-                "Position Type",
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: positions.map((type) {
-                  final selected = selectedTypes.contains(type);
-                  return ChoiceChip(
-                    label: Text(type),
-                    selected: selected,
-                    selectedColor: AppColors.primary,
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.white : Colors.black87,
-                    ),
-                    onSelected: (val) {
+                  /// 🧩 Position Type
+                  const Text(
+                    "Position Type",
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: positions.map((type) {
+                      final selected = selectedTypes.contains(type);
+                      return ChoiceChip(
+                        label: Text(type),
+                        selected: selected,
+                        selectedColor: AppColors.primary,
+                        backgroundColor: Colors.white,
+                        labelStyle: TextStyle(
+                          color: selected ? Colors.white : Colors.black87,
+                        ),
+                        onSelected: (val) {
+                          setState(() {
+                            if (val) {
+                              selectedTypes.add(type);
+                            } else {
+                              selectedTypes.remove(type);
+                            }
+                          });
+                        },
+                        shape: StadiumBorder(
+                          side: BorderSide(color: AppColors.primary),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  /// 💰 Salary Range
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("₹${minSalary.toInt()}L"),
+                      Text("₹${maxSalary.toInt()}L PA"),
+                    ],
+                  ),
+                  RangeSlider(
+                    activeColor: AppColors.primary,
+                    inactiveColor: Colors.grey.shade300,
+                    values: RangeValues(minSalary, maxSalary),
+                    min: 0,
+                    max: 100,
+                    divisions: 20,
+                    onChanged: (values) {
                       setState(() {
-                        if (val) {
-                          selectedTypes.add(type);
-                        } else {
-                          selectedTypes.remove(type);
-                        }
+                        minSalary = values.start;
+                        maxSalary = values.end;
                       });
                     },
-                    shape: StadiumBorder(
-                      side: BorderSide(color: AppColors.primary),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-
-              /// 💰 Salary Range
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("₹${minSalary.toInt()}L"),
-                  Text("₹${maxSalary.toInt()}L PA"),
-                ],
-              ),
-              RangeSlider(
-                activeColor: AppColors.primary,
-                inactiveColor: Colors.grey.shade300,
-                values: RangeValues(minSalary, maxSalary),
-                min: 0,
-                max: 100,
-                divisions: 20,
-                onChanged: (values) {
-                  setState(() {
-                    minSalary = values.start;
-                    maxSalary = values.end;
-                  });
-                },
-              ),
-              const SizedBox(height: 18),
-
-              /// Buttons Row
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          selectedLocation = null;
-                          selectedSpeciality = null;
-                          selectedSubSpeciality = null;
-                          selectedTypes.clear();
-                          minSalary = 10;
-                          maxSalary = 70;
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade100,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        "Reset All",
-                        style: TextStyle(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context, {
-                          'location': selectedLocation,
-                          'speciality': selectedSpeciality,
-                          'subSpeciality': selectedSubSpeciality,
-                          'types': selectedTypes,
-                          'minSalary': minSalary,
-                          'maxSalary': maxSalary,
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text(
-                        "Apply Filters",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
+          
+          const Divider(height: 1),
+          // Sticky Footer
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        selectedLocation = null;
+                        selectedSpeciality = null;
+                        selectedSubSpeciality = null;
+                        selectedTypes.clear();
+                        minSalary = 10;
+                        maxSalary = 70;
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade100,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      "Reset All",
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context, {
+                        'location': selectedLocation,
+                        'speciality': selectedSpeciality,
+                        'subSpeciality': selectedSubSpeciality,
+                        'types': selectedTypes,
+                        'minSalary': minSalary,
+                        'maxSalary': maxSalary,
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text(
+                      "Apply Filters",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

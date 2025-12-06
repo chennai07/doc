@@ -422,6 +422,7 @@ class _HospitalFormState extends State<HospitalForm> {
     "Dermatology",
     "Radiology",
     "Gastroenterology",
+    "Interventionists",
   ];
 
   final List<String> selectedDepartments = [];
