@@ -13,6 +13,7 @@ class ApplicantCard extends StatelessWidget {
   final String imagePath;
   final String? jobTitle; // Added for the new design
   final bool showImage;
+  final bool isKYCVerified; // Added to show KYC status
 
   const ApplicantCard({
     super.key,
@@ -28,6 +29,7 @@ class ApplicantCard extends StatelessWidget {
     required Null Function() onViewProfileTap,
     this.jobTitle,
     this.showImage = true,
+    this.isKYCVerified = true, // Default to true for backward compatibility
   });
 
   @override
@@ -204,6 +206,38 @@ class ApplicantCard extends StatelessWidget {
                       ),
                     ],
                   ),
+
+                  // ----------- KYC WARNING -----------
+                  if (!isKYCVerified) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade300),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            size: 16,
+                            color: Colors.orange.shade700,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            "This job will not be listed",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 14),
 
