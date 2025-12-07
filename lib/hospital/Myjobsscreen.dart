@@ -598,6 +598,7 @@ class _MyJobsPageState extends State<MyJobsPage> {
     final qualifications = job['qualifications']?.toString() ?? '';
     final aboutRole = job['aboutRole']?.toString() ?? '';
     final status = job['status']?.toString() ?? 'Active';
+    final isKYCVerified = job['isKYCVerified'] ?? true; // Default to true if not present
 
     Color tagColor;
     switch (status.toLowerCase()) {
@@ -611,36 +612,74 @@ class _MyJobsPageState extends State<MyJobsPage> {
         tagColor = Colors.green;
     }
 
-    return ApplicantCard(
-      name: title.isNotEmpty ? title : 'Job',
-      role: department.isNotEmpty ? department : subSpeciality,
-      location: location,
-      qualification: qualifications.isNotEmpty ? qualifications : subSpeciality,
-      currentRole: aboutRole,
-      tag: status,
-      tagColor: tagColor,
-      imagePath: 'assets/logo.png',
-      showImage: false,
-      onReviewTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => JobDetailScreen(
-              job: job,
-              onEdit: (updatedJob) {},
-              onClose: () {},
-              onDelete: () {},
-              onViewApplicants: () {
-                _viewApplicantsForJob(job);
-              },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ApplicantCard(
+          name: title.isNotEmpty ? title : 'Job',
+          role: department.isNotEmpty ? department : subSpeciality,
+          location: location,
+          qualification: qualifications.isNotEmpty ? qualifications : subSpeciality,
+          currentRole: aboutRole,
+          tag: status,
+          tagColor: tagColor,
+          imagePath: 'assets/logo.png',
+          showImage: false,
+          onReviewTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => JobDetailScreen(
+                  job: job,
+                  onEdit: (updatedJob) {},
+                  onClose: () {},
+                  onDelete: () {},
+                  onViewApplicants: () {
+                    _viewApplicantsForJob(job);
+                  },
+                ),
+              ),
+            );
+            if (result == true) {
+              _fetchJobs();
+            }
+          },
+          onViewProfileTap: () {},
+        ),
+        // Show warning if KYC is not verified
+        if (isKYCVerified != true)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: Colors.orange.shade700,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    "This job will not be listed",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange.shade700,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        );
-        if (result == true) {
-          _fetchJobs();
-        }
-      },
-      onViewProfileTap: () {},
+      ],
     );
   }
 }
+
