@@ -1584,38 +1584,40 @@ class _ApplicantProfilePageState extends State<ApplicantProfilePage> {
                 ),
               )
             else ...[
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton(
-                  onPressed: _isRejecting ? null : _confirmReject,
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              // Only show Reject button if interview is NOT scheduled
+              if (!status.toLowerCase().contains('interview')) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: OutlinedButton(
+                    onPressed: _isRejecting ? null : _confirmReject,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
+                    child: _isRejecting
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.red,
+                            ),
+                          )
+                        : Text(
+                            'Reject Application',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
-                  child: _isRejecting
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.red,
-                          ),
-                        )
-                      : Text(
-                          'Reject Application',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                 ),
-              ),
-              const SizedBox(height: 16),
-            
+                const SizedBox(height: 16),
+              ],
               // Schedule Interview Button
               status.toLowerCase().contains('interview')
                   ? SizedBox(

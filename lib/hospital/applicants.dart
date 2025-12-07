@@ -250,7 +250,7 @@ class _ApplicantsState extends State<Applicants> {
         'interviewMode': interviewMode ?? '',
         'applicationDeadline': deadlineCtrl.text.trim(),
         'healthcare_id': finalHealthcareId, // Use the verified ID
-        'status': '',
+        'status': 'Active', // Default status for new jobs
       };
 
       print('🩺 Final healthcare_id being sent: $healthcareId');

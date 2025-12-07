@@ -71,39 +71,41 @@ class _NavbarState extends State<Navbar> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          // KYC / Free Trial Banner
-          Container(
-            width: double.infinity,
-            color: const Color(0xFFFFF8E1), // Light Amber
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 10, // Handle status bar
-              bottom: 10,
-              left: 16,
-              right: 16,
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline_rounded,
-                    color: Colors.orange, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    "You are under a free trial and we are reviewing your profile is under the KYC process",
-                    style: TextStyle(
-                      color: Colors.orange[800],
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+          // KYC Banner - Only show if isKYCVerified is false
+          if (widget.hospitalData['isKYCVerified'] != true)
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFFFF8E1), // Light Amber
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 10, // Handle status bar
+                bottom: 10,
+                left: 16,
+                right: 16,
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      color: Colors.orange, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "You are under the KYC verification, so you can post the job, but it will not be listed to the surgeons until verification is completed.",
+                      style: TextStyle(
+                        color: Colors.orange[800],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           // Main Content
           Expanded(
             child: MediaQuery.removePadding(
               context: context,
-              removeTop: true,
+              // Only remove top padding if KYC banner is shown (it handles the status bar)
+              removeTop: widget.hospitalData['isKYCVerified'] != true,
               child: pages[selectedIndex],
             ),
           ),

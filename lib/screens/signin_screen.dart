@@ -243,14 +243,13 @@ class _LoginScreenState extends State<LoginScreen> {
         final rl = (role ?? '').toLowerCase().trim();
         if (rl.contains('hospital') || rl.contains('health') || rl.contains('org')) {
           // Extract primary healthcare ID from signin response
-          // PRIORITY: healthcare_id first (that's what edit API uses, not _id)
           String? healthcareId;
 
           if (userData is Map) {
-            final raw = (userData['healthcare_id'] ??
+            final raw = (userData['_id'] ??
+                    userData['healthcare_id'] ??
                     userData['healthcareId'] ??
                     userData['healthcareID'] ??
-                    userData['_id'] ??
                     userData['id'])
                 ?.toString()
                 .trim();
@@ -260,10 +259,10 @@ class _LoginScreenState extends State<LoginScreen> {
           }
 
           if ((healthcareId == null || healthcareId.isEmpty) && data is Map) {
-            final raw = (data['healthcare_id'] ??
+            final raw = (data['_id'] ??
+                    data['healthcare_id'] ??
                     data['healthcareId'] ??
                     data['healthcareID'] ??
-                    data['_id'] ??
                     data['id'])
                 ?.toString()
                 .trim();
@@ -308,20 +307,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     (payload is Map<String, dynamic>) ? payload : <String, dynamic>{};
 
                 final navHospitalData = Map<String, dynamic>.from(mapPayload);
-                
-                // Only set healthcare_id if not already in the API response
-                // (the API may return the correct healthcare_id that differs from _id)
-                if (navHospitalData['healthcare_id'] == null || 
-                    navHospitalData['healthcare_id'].toString().isEmpty) {
-                  navHospitalData['healthcare_id'] = healthcareId;
-                } else {
-                  // Use the healthcare_id from API response and update our stored ID
-                  final apiHealthcareId = navHospitalData['healthcare_id'].toString();
-                  if (apiHealthcareId != healthcareId) {
-                    debugPrint('🏥 Updating stored healthcare_id from $healthcareId to $apiHealthcareId (from API)');
-                    await SessionManager.saveHealthcareId(apiHealthcareId);
-                  }
-                }
+                navHospitalData['healthcare_id'] = healthcareId;
 
                 if (!mounted) return;
                 Navigator.pushReplacement(
