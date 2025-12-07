@@ -188,37 +188,47 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                 ],
               ),
             ),
-            // Take Action dropdown mock
+            // Take Action dropdown - disabled when job is closed
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: () => _showTakeActionMenu(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.blue),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "Take Action",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blue,
-                          ),
+                child: Builder(
+                  builder: (context) {
+                    final status = (job['status'] ?? 'active').toString().toLowerCase();
+                    final isClosed = status == 'closed' || status == 'job filled';
+                    
+                    return GestureDetector(
+                      onTap: isClosed ? null : () => _showTakeActionMenu(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
                         ),
-                        SizedBox(width: 6),
-                        Icon(Icons.keyboard_arrow_down, color: Colors.blue),
-                      ],
-                    ),
-                  ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: isClosed ? Colors.grey : Colors.blue),
+                          color: isClosed ? Colors.grey.shade100 : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isClosed ? "Job Closed" : "Take Action",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: isClosed ? Colors.grey : Colors.blue,
+                              ),
+                            ),
+                            if (!isClosed) ...[
+                              const SizedBox(width: 6),
+                              const Icon(Icons.keyboard_arrow_down, color: Colors.blue),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -736,12 +746,14 @@ class ApplicantsListPage extends StatefulWidget {
   final String jobId;
   final String jobTitle;
   final List<Map<String, dynamic>> applicants;
+  final String? jobStatus;
 
   const ApplicantsListPage({
     super.key,
     required this.jobId,
     required this.jobTitle,
     required this.applicants,
+    this.jobStatus,
   });
 
   @override
@@ -949,12 +961,15 @@ class _ApplicantsListPageState extends State<ApplicantsListPage> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
                           onTap: () async {
+                            final isJobClosed = (widget.jobStatus ?? '').toLowerCase() == 'closed' ||
+                                                (widget.jobStatus ?? '').toLowerCase() == 'job filled';
                             final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => ApplicantProfilePage(
                                   applicant: a,
                                   jobId: widget.jobId,
+                                  isJobClosed: isJobClosed,
                                 ),
                               ),
                             );
@@ -1068,11 +1083,15 @@ class _ApplicantsListPageState extends State<ApplicantsListPage> {
 class ApplicantProfilePage extends StatefulWidget {
   final Map<String, dynamic> applicant;
   final String? jobId;
+  final bool isJobClosed;
+  final bool viewOnly;
 
   const ApplicantProfilePage({
     super.key,
     required this.applicant,
     this.jobId,
+    this.isJobClosed = false,
+    this.viewOnly = false,
   });
 
   @override
@@ -1482,7 +1501,65 @@ class _ApplicantProfilePageState extends State<ApplicantProfilePage> {
             ),
 
             const SizedBox(height: 20),
-            if (status.toLowerCase() == 'rejected')
+            
+            // Show action buttons only if not viewOnly and job is not closed
+            if (widget.viewOnly || widget.isJobClosed) ...[
+              // View Only or Job Closed - Show status only, no action buttons
+              if (widget.isJobClosed)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Job is closed - No actions available',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              // Show current status indicator
+              if (status.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: status.toLowerCase() == 'rejected'
+                        ? const Color(0xFFFFF3E0)
+                        : status.toLowerCase().contains('interview')
+                            ? Colors.green.shade50
+                            : Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Status: ${status.isNotEmpty ? status : 'Applied'}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: status.toLowerCase() == 'rejected'
+                            ? Colors.orange[800]
+                            : status.toLowerCase().contains('interview')
+                                ? Colors.green[700]
+                                : Colors.blue[700],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ] else if (status.toLowerCase() == 'rejected')
               SizedBox(
                 width: double.infinity,
                 height: 56,

@@ -29,14 +29,20 @@ class _NavbarState extends State<Navbar> {
             widget.hospitalData['id'] ??
             '')
         .toString();
+    
+    print('🏥 Navbar: healthcareId = $healthcareId');
+    print('🏥 Navbar: hospitalData = ${widget.hospitalData}');
+    
     pages = [
       myjobs_screen.MyJobsPage(
         healthcareId: healthcareId,
+        hospitalData: widget.hospitalData,
         onHospitalNameTap: _openHospitalProfile,
       ),
       ManageJobListings(hospitalData: widget.hospitalData),
       postjob_screen.MyJobsPage(
         healthcareId: healthcareId,
+        hospitalData: widget.hospitalData,
         onHospitalNameTap: _openHospitalProfile,
       ),
       ScheduledInterviewScreen(healthcareId: healthcareId),

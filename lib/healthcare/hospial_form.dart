@@ -561,9 +561,28 @@ class _HospitalFormState extends State<HospitalForm> {
       
       // Ensure essential fields are present (fallback to form inputs)
       finalHospitalData['healthcare_id'] = finalHealthcareId;
-      if (finalHospitalData['hospitalName'] == null) finalHospitalData['hospitalName'] = hospitalNameController.text.trim();
-      if (finalHospitalData['email'] == null) finalHospitalData['email'] = emailController.text.trim();
-      if (finalHospitalData['location'] == null) finalHospitalData['location'] = locationController.text.trim();
+      if (finalHospitalData['hospitalName'] == null || finalHospitalData['hospitalName'].toString().isEmpty) {
+        finalHospitalData['hospitalName'] = hospitalNameController.text.trim();
+      }
+      if (finalHospitalData['email'] == null || finalHospitalData['email'].toString().isEmpty) {
+        finalHospitalData['email'] = emailController.text.trim();
+      }
+      if (finalHospitalData['location'] == null || finalHospitalData['location'].toString().isEmpty) {
+        finalHospitalData['location'] = locationController.text.trim();
+      }
+      // Include logo URL if returned by backend
+      if (finalHospitalData['hospitalLogo'] == null || finalHospitalData['hospitalLogo'].toString().isEmpty) {
+        // Try to get logo from response
+        if (res['data'] is Map) {
+          final logoFromResponse = res['data']['hospitalLogo'] ?? 
+                                   (res['data']['data'] is Map ? res['data']['data']['hospitalLogo'] : null);
+          if (logoFromResponse != null) {
+            finalHospitalData['hospitalLogo'] = logoFromResponse.toString();
+          }
+        }
+      }
+      
+      print('🏥 Final hospital data for navigation: $finalHospitalData');
       
       print('🏥 Navigating to Free Trial Screen with healthcare_id: $finalHealthcareId');
 

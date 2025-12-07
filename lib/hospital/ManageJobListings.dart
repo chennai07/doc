@@ -517,6 +517,8 @@ class _ManageJobListingsState extends State<ManageJobListings> {
     final rawId = job['_id'] ?? job['id'] ?? '';
     final jobId = rawId.toString();
     final jobTitle = (job['jobTitle'] ?? job['title'] ?? '').toString();
+    final jobStatus = (job['status'] ?? '').toString();
+    
     if (jobId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Job id not found for this listing.')),
@@ -566,6 +568,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
               jobId: jobId,
               jobTitle: jobTitle,
               applicants: applicants,
+              jobStatus: jobStatus,
             ),
           ),
         );
@@ -841,6 +844,7 @@ class _ManageJobListingsState extends State<ManageJobListings> {
             builder: (_) => ApplicantProfilePage(
               applicant: a,
               jobId: (a['jobId'] ?? '').toString(),
+              viewOnly: true, // Only view profile and status, no actions from main Applicants screen
             ),
           ),
         );

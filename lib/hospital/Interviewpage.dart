@@ -35,7 +35,7 @@ class _ScheduleInterviewPageState extends State<ScheduleInterviewPage> {
   Future<void> pickDate() async {
     final d = await showDatePicker(
       context: context,
-      firstDate: DateTime(2020),
+      firstDate: DateTime.now(),
       lastDate: DateTime(2040),
       initialDate: DateTime.now(),
     );

@@ -7,10 +7,10 @@ import 'package:doc/utils/session_manager.dart';
 
 class MyJobsPage extends StatefulWidget {
   final VoidCallback? onHospitalNameTap;
-
   final String? healthcareId;
+  final Map<String, dynamic>? hospitalData;
 
-  const MyJobsPage({super.key, this.onHospitalNameTap, this.healthcareId});
+  const MyJobsPage({super.key, this.onHospitalNameTap, this.healthcareId, this.hospitalData});
 
   @override
   State<MyJobsPage> createState() => _MyJobsPageState();
@@ -25,6 +25,13 @@ class _MyJobsPageState extends State<MyJobsPage> {
   @override
   void initState() {
     super.initState();
+    // Use passed data immediately if available
+    if (widget.hospitalData != null) {
+      _hospitalName = widget.hospitalData!['hospitalName']?.toString() ?? '';
+      _hospitalLogoUrl = widget.hospitalData!['hospitalLogo']?.toString();
+      print('📋 PostJob: Using passed data - Name: $_hospitalName, Logo: $_hospitalLogoUrl');
+    }
+    // Then fetch fresh data from API
     _fetchHospitalName();
   }
 
