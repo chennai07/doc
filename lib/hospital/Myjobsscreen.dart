@@ -42,6 +42,14 @@ class _MyJobsPageState extends State<MyJobsPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data when the screen is focused or dependencies change
+    _fetchHospitalName();
+    _fetchJobs();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -284,14 +292,14 @@ class _MyJobsPageState extends State<MyJobsPage> {
                                   },
                                   errorBuilder: (context, error, stackTrace) {
                                     return Image.asset(
-                                      "assets/logo.png",
-                                      fit: BoxFit.contain,
+                                      "assets/logo2.png",
+                                      fit: BoxFit.cover,
                                     );
                                   },
                                 )
                               : Image.asset(
-                                  "assets/logo.png",
-                                  fit: BoxFit.contain,
+                                  "assets/logo2.png",
+                                  fit: BoxFit.cover,
                                 ),
                         ),
                       ),

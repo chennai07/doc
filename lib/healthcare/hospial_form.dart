@@ -121,12 +121,22 @@ Future<Map<String, dynamic>> _updateHealthcareProfile({
 }) async {
   try {
     // Use the edit endpoint provided by the user
+    // NOTE: Although the URL suggests an "edit" action and typically uses PUT, 
+    // some backends express updates via POST. The user explicitly requested ensuring
+    // the API call works, and sometimes "not found" issues are due to missing body parameters
+    // or method mismatches.
+    
+    // We will stick to PUT as per standard, BUT we MUST ensure 'healthcare_id' is 
+    // also sent IN THE BODY, as the backend likely looks for it there too.
+    // If PUT fails repeatedly, switching to POST might be the next debugging step,
+    // but first let's ensure the ID is in the body.
     final uri = Uri.parse('http://13.203.67.154:3000/api/healthcare/edit/$healthcareId');
     final req = http.MultipartRequest('PUT', uri);
 
     print('🏥 Updating hospital profile for healthcare_id: $healthcareId');
 
     req.fields.addAll({
+      'healthcare_id': healthcareId, // Explicitly adding this as requested
       'hospitalName': hospitalName,
       'phoneNumber': phoneNumber,
       'email': email,
@@ -585,10 +595,26 @@ class _HospitalFormState extends State<HospitalForm> {
   }
 
   void _handleUpdate() async {
-    print('🏥 Updating hospital profile with healthcare_id: ${widget.healthcareId}');
+    // Determine the best ID to use for the update
+    String idToUse = widget.healthcareId;
+    
+    if (widget.existingData != null) {
+      // Backend edit endpoint typically expects the MongoDB _id
+      if (widget.existingData!.containsKey('_id') && 
+          widget.existingData!['_id'] != null &&
+          widget.existingData!['_id'].toString().isNotEmpty) {
+        idToUse = widget.existingData!['_id'].toString();
+      } else if (widget.existingData!.containsKey('id') && 
+          widget.existingData!['id'] != null &&
+          widget.existingData!['id'].toString().isNotEmpty) {
+          idToUse = widget.existingData!['id'].toString();
+      }
+    }
+
+    print('🏥 Updating hospital profile using ID: $idToUse (Original input: ${widget.healthcareId})');
 
     final res = await _updateHealthcareProfile(
-      healthcareId: widget.healthcareId,
+      healthcareId: idToUse,
       hospitalName: hospitalNameController.text.trim(),
       phoneNumber: phoneController.text.trim(),
       email: emailController.text.trim(),

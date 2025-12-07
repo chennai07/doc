@@ -28,6 +28,12 @@ class _MyJobsPageState extends State<MyJobsPage> {
     _fetchHospitalName();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fetchHospitalName();
+  }
+
   Future<void> _fetchHospitalName() async {
     try {
       String healthcareId = widget.healthcareId ?? '';
@@ -234,18 +240,18 @@ class _MyJobsPageState extends State<MyJobsPage> {
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return Image.asset(
-                                  "assets/logo.png",
+                                  "assets/logo2.png",
                                   height: 40,
                                   width: 40,
-                                  fit: BoxFit.contain,
+                                  fit: BoxFit.cover,
                                 );
                               },
                             )
                           : Image.asset(
-                              "assets/logo.png",
+                              "assets/logo2.png",
                               height: 40,
                               width: 40,
-                              fit: BoxFit.contain,
+                              fit: BoxFit.cover,
                             ),
                     ),
                     const SizedBox(width: 12),

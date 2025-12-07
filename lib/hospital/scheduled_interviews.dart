@@ -23,6 +23,14 @@ class _ScheduledInterviewScreenState extends State<ScheduledInterviewScreen> {
   @override
   void initState() {
     super.initState();
+    // Initial fetch
+    _fetchInterviews();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Fetch when dependencies change (e.g. returning to screen)
     _fetchInterviews();
   }
 

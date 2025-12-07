@@ -41,9 +41,15 @@ class _ManageJobListingsState extends State<ManageJobListings> {
   @override
   void initState() {
     super.initState();
-
     _fetchJobs();
     _initHospitalHeader();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fetchHospitalProfile();
+    _fetchJobs();
   }
 
   void _initHospitalHeader() {
@@ -373,14 +379,14 @@ class _ManageJobListingsState extends State<ManageJobListings> {
                                   },
                                   errorBuilder: (context, error, stackTrace) {
                                     return Image.asset(
-                                      "assets/logo.png",
-                                      fit: BoxFit.contain,
+                                      "assets/logo2.png",
+                                      fit: BoxFit.cover,
                                     );
                                   },
                                 )
                               : Image.asset(
-                                  "assets/logo.png",
-                                  fit: BoxFit.contain,
+                                  "assets/logo2.png",
+                                  fit: BoxFit.cover,
                                 ),
                         ),
                       ),
