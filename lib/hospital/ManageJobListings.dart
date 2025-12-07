@@ -45,13 +45,6 @@ class _ManageJobListingsState extends State<ManageJobListings> {
     _initHospitalHeader();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _fetchHospitalProfile();
-    _fetchJobs();
-  }
-
   void _initHospitalHeader() {
     // Use passed data as initial placeholder if available
     if (widget.hospitalData != null) {

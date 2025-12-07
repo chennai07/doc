@@ -42,14 +42,6 @@ class _MyJobsPageState extends State<MyJobsPage> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Refresh data when the screen is focused or dependencies change
-    _fetchHospitalName();
-    _fetchJobs();
-  }
-
-  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -58,22 +50,31 @@ class _MyJobsPageState extends State<MyJobsPage> {
   Future<void> _fetchHospitalName() async {
     try {
       String? id = widget.healthcareId;
+      print('📋 MyJobs: Widget healthcare_id: $id');
+      
       if (id == null || id.isEmpty) {
         id = await SessionManager.getHealthcareId();
+        print('📋 MyJobs: Session healthcare_id: $id');
       }
       if (id == null || id.isEmpty) {
         id = await SessionManager.getProfileId();
+        print('📋 MyJobs: Session profile_id: $id');
       }
 
       if (id != null && id.isNotEmpty) {
         final uri = Uri.parse('http://13.203.67.154:3000/api/healthcare/healthcare-profile/$id');
+        print('📋 MyJobs: Fetching profile from: $uri');
+        
         final response = await http.get(uri);
+        print('📋 MyJobs: Response status: ${response.statusCode}');
+        
         if (response.statusCode == 200) {
           final body = jsonDecode(response.body);
           final data = body is Map && body['data'] != null ? body['data'] : body;
           if (data is Map) {
              final name = data['hospitalName'] ?? data['name'] ?? data['organizationName'];
              final logo = data['hospitalLogo'];
+             print('📋 MyJobs: Hospital name: $name, Logo: $logo');
              if (mounted) {
                setState(() {
                  if (name != null) _hospitalName = name.toString();
@@ -82,13 +83,16 @@ class _MyJobsPageState extends State<MyJobsPage> {
                });
              }
           }
+        } else {
+          print('📋 MyJobs: Profile fetch failed: ${response.statusCode} - ${response.body}');
+          if (mounted) setState(() => _isHeaderLoading = false);
         }
       } else {
-        // ID not found, stop loading
+        print('📋 MyJobs: No ID found, stopping header loading');
         if (mounted) setState(() => _isHeaderLoading = false);
       }
     } catch (e) {
-      debugPrint('Error fetching hospital name: $e');
+      print('📋 MyJobs: Error fetching hospital name: $e');
       if (mounted) setState(() => _isHeaderLoading = false);
     }
   }

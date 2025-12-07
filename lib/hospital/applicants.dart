@@ -50,12 +50,6 @@ class _ApplicantsState extends State<Applicants> {
     _fetchHospitalProfile();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _fetchHospitalProfile();
-  }
-
   Future<void> _fetchHospitalProfile() async {
     try {
       String? id = widget.healthcareId;

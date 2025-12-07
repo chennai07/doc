@@ -28,12 +28,6 @@ class _MyJobsPageState extends State<MyJobsPage> {
     _fetchHospitalName();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _fetchHospitalName();
-  }
-
   Future<void> _fetchHospitalName() async {
     try {
       String healthcareId = widget.healthcareId ?? '';

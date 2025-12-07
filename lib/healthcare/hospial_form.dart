@@ -68,7 +68,10 @@ Future<Map<String, dynamic>> _addHealthcareProfile({
     }
 
     if (logoFile != null) {
+      print('🏥 Adding hospital logo to create request: ${logoFile.path}');
       req.files.add(await http.MultipartFile.fromPath('hospitalLogo', logoFile.path));
+    } else {
+      print('🏥 No logo file provided in create request');
     }
 
     final streamed = await req.send();
@@ -159,11 +162,18 @@ Future<Map<String, dynamic>> _updateHealthcareProfile({
     }
 
     if (logoFile != null) {
+      print('🏥 Adding hospital logo to update request: ${logoFile.path}');
       req.files.add(await http.MultipartFile.fromPath('hospitalLogo', logoFile.path));
+    } else {
+      print('🏥 No new logo file provided in update request (keeping existing logo)');
     }
 
     final streamed = await req.send();
     final res = await http.Response.fromStream(streamed);
+
+    print('🏥 Update Response Status: ${res.statusCode}');
+    print('🏥 Update Response Headers: ${res.headers}');
+    print('🏥 Update Response Body: ${res.body}');
 
     final body = res.body;
     final ct = res.headers['content-type'] ?? '';
@@ -173,23 +183,30 @@ Future<Map<String, dynamic>> _updateHealthcareProfile({
     if (res.statusCode == 200 || res.statusCode == 201) {
       if (isJson) {
         try {
-          return {'success': true, 'data': jsonDecode(body)};
+          final decoded = jsonDecode(body);
+          print('🏥 Update Success - Decoded Response: $decoded');
+          return {'success': true, 'data': decoded};
         } catch (_) {
+          print('🏥 Update Success - Raw Response: $body');
           return {'success': true, 'data': {'raw': body}};
         }
       } else {
+        print('🏥 Update Success - Non-JSON Response: $body');
         return {'success': true, 'data': {'raw': body}};
       }
     }
     if (isJson) {
       try {
         final err = jsonDecode(body);
+        print('🏥 Update Failed - Error Response: $err');
         return {'success': false, 'message': err['message'] ?? body};
       } catch (_) {
+        print('🏥 Update Failed - Raw Error: $body');
         return {'success': false, 'message': body};
       }
     }
     final snippet = body.length > 200 ? body.substring(0, 200) : body;
+    print('🏥 Update Failed - HTTP ${res.statusCode}: $snippet');
     return {'success': false, 'message': 'HTTP ${res.statusCode}: $snippet'};
   } catch (e) {
     return {'success': false, 'message': e.toString()};
@@ -596,22 +613,32 @@ class _HospitalFormState extends State<HospitalForm> {
 
   void _handleUpdate() async {
     // Determine the best ID to use for the update
+    // Based on the Postman example: PUT /api/healthcare/edit/693230f143caad12d8805c9c
+    // The URL expects healthcare_id
     String idToUse = widget.healthcareId;
     
     if (widget.existingData != null) {
-      // Backend edit endpoint typically expects the MongoDB _id
-      if (widget.existingData!.containsKey('_id') && 
+      // Priority: healthcare_id > _id > id (based on Postman example)
+      if (widget.existingData!.containsKey('healthcare_id') && 
+          widget.existingData!['healthcare_id'] != null &&
+          widget.existingData!['healthcare_id'].toString().isNotEmpty) {
+        idToUse = widget.existingData!['healthcare_id'].toString();
+      } else if (widget.existingData!.containsKey('_id') && 
           widget.existingData!['_id'] != null &&
           widget.existingData!['_id'].toString().isNotEmpty) {
         idToUse = widget.existingData!['_id'].toString();
       } else if (widget.existingData!.containsKey('id') && 
           widget.existingData!['id'] != null &&
           widget.existingData!['id'].toString().isNotEmpty) {
-          idToUse = widget.existingData!['id'].toString();
+        idToUse = widget.existingData!['id'].toString();
       }
     }
 
-    print('🏥 Updating hospital profile using ID: $idToUse (Original input: ${widget.healthcareId})');
+    print('🏥 Updating hospital profile using ID: $idToUse');
+    print('🏥 Widget healthcare_id: ${widget.healthcareId}');
+    print('🏥 Existing data keys: ${widget.existingData?.keys.toList()}');
+    print('🏥 Logo file to upload: ${hospitalLogo != null ? hospitalLogo!.path : "No new logo selected"}');
+    print('🏥 Existing logo URL: $hospitalLogoUrl');
 
     final res = await _updateHealthcareProfile(
       healthcareId: idToUse,
@@ -634,14 +661,28 @@ class _HospitalFormState extends State<HospitalForm> {
     );
 
     if (res['success'] == true) {
+      print('🏥 ✅ Profile update successful!');
+      
+      // Fetch the updated profile to get the new logo URL
+      try {
+        final fetchRes = await _fetchHealthcareProfile(idToUse);
+        if (fetchRes['success'] == true && fetchRes['data'] != null) {
+          final updatedData = fetchRes['data'] is Map ? fetchRes['data'] : {};
+          print('🏥 Updated logo URL: ${updatedData['hospitalLogo']}');
+        }
+      } catch (e) {
+        print('🏥 ⚠️ Could not fetch updated profile: $e');
+      }
+      
       Get.snackbar(
         'Success', 
         'Profile updated successfully',
         backgroundColor: Colors.green,
         colorText: Colors.white,
       );
-      Navigator.pop(context); // Go back to profile
+      Navigator.pop(context, true); // Go back to profile with refresh signal
     } else {
+      print('🏥 ❌ Profile update failed: ${res['message']}');
       Get.snackbar(
         'Update Failed', 
         res['message']?.toString() ?? 'Error updating profile',
