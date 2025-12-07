@@ -48,15 +48,16 @@ class _ManageJobListingsState extends State<ManageJobListings> {
   void _initHospitalHeader() {
     // Use passed data as initial placeholder if available
     if (widget.hospitalData != null) {
+       var logo = widget.hospitalData?['hospitalLogo']?.toString() ?? '';
+       // Add base URL if logo is a relative path
+       if (logo.isNotEmpty && !logo.startsWith('http')) {
+         logo = 'http://13.203.67.154:3000/$logo';
+       }
        setState(() {
          _hospitalName = widget.hospitalData?['hospitalName']?.toString() ?? 
                          widget.hospitalData?['name']?.toString() ?? 
                          'Hospital';
-         _hospitalLogoUrl = widget.hospitalData?['hospitalLogo']?.toString();
-         // Don't set loading to false yet, wait for API fetch to confirm/update
-         // or set it false but let API update it later?
-         // User wants to "use the profile api", so we should fetch.
-         // Let's keep loading true or at least fetch in background.
+         _hospitalLogoUrl = logo.isNotEmpty ? logo : null;
        });
     }
     _fetchHospitalProfile();
@@ -77,11 +78,15 @@ class _ManageJobListingsState extends State<ManageJobListings> {
           final data = body is Map && body['data'] != null ? body['data'] : body;
           if (data is Map) {
              final name = data['hospitalName'] ?? data['name'] ?? data['organizationName'];
-             final logo = data['hospitalLogo'];
+             var logo = data['hospitalLogo']?.toString() ?? '';
+             // Add base URL if logo is a relative path
+             if (logo.isNotEmpty && !logo.startsWith('http')) {
+               logo = 'http://13.203.67.154:3000/$logo';
+             }
              if (mounted) {
                setState(() {
                  if (name != null) _hospitalName = name.toString();
-                 if (logo != null) _hospitalLogoUrl = logo.toString();
+                 if (logo.isNotEmpty) _hospitalLogoUrl = logo;
                  _isHeaderLoading = false;
                });
              }

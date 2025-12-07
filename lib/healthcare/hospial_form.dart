@@ -516,21 +516,22 @@ class _HospitalFormState extends State<HospitalForm> {
       if (res['data'] != null) {
         final responseData = res['data'];
         if (responseData is Map) {
-          // PRIORITY ORDER: _id (MongoDB primary key) > healthcare_id > healthcareId
-          // The backend likely uses _id to look up hospitals, not healthcare_id
-          final extractedId = responseData['_id'] ??
-                             (responseData['data'] is Map ? responseData['data']['_id'] : null) ??
-                             responseData['healthcare_id'] ?? 
-                             responseData['healthcareId'] ?? 
+          // PRIORITY ORDER: healthcare_id > healthcareId > _id
+          // The edit API uses healthcare_id in the URL, NOT _id
+          // _id is the MongoDB document ID, but healthcare_id is the business identifier
+          final extractedId = responseData['healthcare_id'] ?? 
+                             responseData['healthcareId'] ??
                              (responseData['data'] is Map ? 
                                (responseData['data']['healthcare_id'] ?? 
-                                responseData['data']['healthcareId']) : null);
+                                responseData['data']['healthcareId'] ??
+                                responseData['data']['_id']) : null) ??
+                             responseData['_id'];
           
           if (extractedId != null && extractedId.toString().trim().isNotEmpty) {
             finalHealthcareId = extractedId.toString().trim();
-            print('🏥 ✅ Extracted ID from backend response: $finalHealthcareId');
+            print('🏥 ✅ Extracted healthcare_id from backend response: $finalHealthcareId');
           } else {
-            print('🏥 ⚠️ No ID found in response, using original: $finalHealthcareId');
+            print('🏥 ⚠️ No healthcare_id found in response, using original: $finalHealthcareId');
           }
         }
       }
@@ -632,12 +633,11 @@ class _HospitalFormState extends State<HospitalForm> {
 
   void _handleUpdate() async {
     // Determine the best ID to use for the update
-    // Based on the Postman example: PUT /api/healthcare/edit/693230f143caad12d8805c9c
-    // The URL expects healthcare_id
+    // Backend developer says use healthcare_id in URL: PUT /api/healthcare/edit/{healthcare_id}
     String idToUse = widget.healthcareId;
     
     if (widget.existingData != null) {
-      // Priority: healthcare_id > _id > id (based on Postman example)
+      // Priority: healthcare_id > _id > id (backend uses healthcare_id)
       if (widget.existingData!.containsKey('healthcare_id') && 
           widget.existingData!['healthcare_id'] != null &&
           widget.existingData!['healthcare_id'].toString().isNotEmpty) {
@@ -655,7 +655,8 @@ class _HospitalFormState extends State<HospitalForm> {
 
     print('🏥 Updating hospital profile using ID: $idToUse');
     print('🏥 Widget healthcare_id: ${widget.healthcareId}');
-    print('🏥 Existing data keys: ${widget.existingData?.keys.toList()}');
+    print('🏥 _id from existingData: ${widget.existingData?['_id']}');
+    print('🏥 healthcare_id from existingData: ${widget.existingData?['healthcare_id']}');
     print('🏥 Logo file to upload: ${hospitalLogo != null ? hospitalLogo!.path : "No new logo selected"}');
     print('🏥 Existing logo URL: $hospitalLogoUrl');
 

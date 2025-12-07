@@ -28,7 +28,12 @@ class _MyJobsPageState extends State<MyJobsPage> {
     // Use passed data immediately if available
     if (widget.hospitalData != null) {
       _hospitalName = widget.hospitalData!['hospitalName']?.toString() ?? '';
-      _hospitalLogoUrl = widget.hospitalData!['hospitalLogo']?.toString();
+      var logo = widget.hospitalData!['hospitalLogo']?.toString() ?? '';
+      // Add base URL if logo is a relative path
+      if (logo.isNotEmpty && !logo.startsWith('http')) {
+        logo = 'http://13.203.67.154:3000/$logo';
+      }
+      _hospitalLogoUrl = logo.isNotEmpty ? logo : null;
       print('📋 PostJob: Using passed data - Name: $_hospitalName, Logo: $_hospitalLogoUrl');
     }
     // Then fetch fresh data from API
@@ -53,11 +58,15 @@ class _MyJobsPageState extends State<MyJobsPage> {
           final profile = data is Map && data['data'] != null ? data['data'] : data;
           if (profile is Map) {
              final name = profile['hospitalName'] ?? profile['name'] ?? profile['organizationName'];
-             final logo = profile['hospitalLogo'];
+             var logo = profile['hospitalLogo']?.toString() ?? '';
+             // Add base URL if logo is a relative path
+             if (logo.isNotEmpty && !logo.startsWith('http')) {
+               logo = 'http://13.203.67.154:3000/$logo';
+             }
              if (mounted) {
                setState(() {
                  if (name != null) _hospitalName = name.toString();
-                 if (logo != null) _hospitalLogoUrl = logo.toString();
+                 if (logo.isNotEmpty) _hospitalLogoUrl = logo;
                });
              }
           }

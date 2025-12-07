@@ -234,7 +234,6 @@ class _HospitalProfileState extends State<HospitalProfile> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // ✅ Hospital Logo
-            // ✅ Hospital Logo
             Center(
               child: Container(
                 width: 100,
@@ -244,14 +243,23 @@ class _HospitalProfileState extends State<HospitalProfile> {
                   border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: ClipOval(
-                  child: (_profileData['hospitalLogo'] != null && 
-                          _profileData['hospitalLogo'].toString().isNotEmpty)
-                      ? Image.network(
-                          _profileData['hospitalLogo'].toString(),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Image.asset('assets/logo2.png', fit: BoxFit.cover),
-                        )
-                      : Image.asset('assets/logo2.png', fit: BoxFit.cover),
+                  child: Builder(
+                    builder: (context) {
+                      var logoUrl = (_profileData['hospitalLogo'] ?? '').toString();
+                      // Add base URL if logo is a relative path
+                      if (logoUrl.isNotEmpty && !logoUrl.startsWith('http')) {
+                        logoUrl = 'http://13.203.67.154:3000/$logoUrl';
+                      }
+                      
+                      return logoUrl.isNotEmpty
+                          ? Image.network(
+                              logoUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Image.asset('assets/logo2.png', fit: BoxFit.cover),
+                            )
+                          : Image.asset('assets/logo2.png', fit: BoxFit.cover);
+                    },
+                  ),
                 ),
               ),
             ),

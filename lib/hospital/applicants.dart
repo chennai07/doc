@@ -211,9 +211,10 @@ class _ApplicantsState extends State<Applicants> {
               final data = (body is Map && body['data'] != null) ? body['data'] : body;
               
               if (data is Map) {
-                final recoveredId = data['_id'] ?? data['healthcare_id'] ?? data['healthcareId'];
+                // PRIORITY: healthcare_id first (that's what edit API uses)
+                final recoveredId = data['healthcare_id'] ?? data['healthcareId'] ?? data['_id'];
                 if (recoveredId != null) {
-                  print('🩺 ✅ Recovered valid ID via email: $recoveredId');
+                  print('🩺 ✅ Recovered valid healthcare_id via email: $recoveredId');
                   finalHealthcareId = recoveredId.toString();
                   await SessionManager.saveHealthcareId(finalHealthcareId);
                   idVerified = true;
