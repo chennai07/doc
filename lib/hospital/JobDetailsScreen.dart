@@ -1543,6 +1543,132 @@ class _ApplicantProfilePageState extends State<ApplicantProfilePage> {
     }
   }
 
+  void _showEditStatusDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Update Applicant Status'),
+          content: const Text('Select the status for this applicant after the interview:'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _updateApplicantStatus('rejected');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text('Rejected', style: TextStyle(color: Colors.white)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _updateApplicantStatus('selected');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+              ),
+              child: const Text('Selected', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _updateApplicantStatus(String newStatus) async {
+    final surgeonProfileId = (widget.applicant['surgeonprofile_id'] ?? 
+        widget.applicant['surgeonProfileId'] ?? 
+        widget.applicant['profileId'] ?? 
+        '').toString().trim();
+    final jobId = (widget.jobId ?? '').toString().trim();
+
+    if (surgeonProfileId.isEmpty || jobId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing details. Cannot update status.')),
+      );
+      return;
+    }
+
+    final uri = Uri.parse(
+      'http://13.203.67.154:3000/api/jobs/applied-jobs/jobs-edit/$surgeonProfileId/$jobId',
+    );
+
+    final payload = {
+      'status': newStatus,
+    };
+
+    print('📋 Updating applicant status: $uri');
+    print('📋 Payload: $payload');
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final response = await http.put(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Dismiss loading
+
+      print('📋 Update status response: ${response.statusCode} ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Applicant marked as $newStatus!')),
+        );
+        // Pop back with true to refresh the list
+        if (mounted) Navigator.pop(context, true);
+      } else {
+        String errorMsg = 'Failed to update status (${response.statusCode})';
+        try {
+          final data = jsonDecode(response.body);
+          if (data is Map && data['message'] != null) {
+            errorMsg = data['message'].toString();
+          }
+        } catch (_) {}
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg)),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Dismiss loading
+      print('📋 Update status error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating status: $e')),
+      );
+    }
+  }
+
+  // Check if interview date has passed
+  bool _isInterviewDatePassed() {
+    final interviewDateStr = widget.applicant['interviewDate']?.toString() ?? '';
+    if (interviewDateStr.isEmpty) return false;
+    
+    try {
+      final interviewDate = DateTime.parse(interviewDateStr);
+      // Show Edit Status if today is after the interview date
+      return DateTime.now().isAfter(interviewDate);
+    } catch (e) {
+      print('Error parsing interview date: $e');
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final firstName =
@@ -1972,28 +2098,53 @@ class _ApplicantProfilePageState extends State<ApplicantProfilePage> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _showRescheduleDialog(),
-                            icon: const Icon(Icons.edit_calendar, size: 18),
-                            label: Text(
-                              'Reschedule Interview',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                        // Show Edit Status button if interview date has passed
+                        if (_isInterviewDatePassed())
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _showEditStatusDialog(),
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: Text(
+                                'Edit Status',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                               ),
                             ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.blue,
-                              side: const BorderSide(color: Colors.blue, width: 1.5),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                          )
+                        else
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _showRescheduleDialog(),
+                              icon: const Icon(Icons.edit_calendar, size: 18),
+                              label: Text(
+                                'Reschedule Interview',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.blue,
+                                side: const BorderSide(color: Colors.blue, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     )
                   : SizedBox(
