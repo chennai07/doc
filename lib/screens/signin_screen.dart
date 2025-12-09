@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:doc/utils/session_manager.dart';
 import 'package:doc/screens/signup_screen.dart';
+import 'package:doc/admin/admin_navbar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -241,7 +242,31 @@ class _LoginScreenState extends State<LoginScreen> {
         ).showSnackBar(const SnackBar(content: Text(' Login Successful!')));
 
         final rl = (role ?? '').toLowerCase().trim();
-        if (rl.contains('hospital') || rl.contains('health') || rl.contains('org')) {
+        
+        // Check if user is Admin and redirect to Admin Dashboard
+        if (rl.contains('admin')) {
+          // Build admin data from response
+          final adminData = <String, dynamic>{};
+          if (userData is Map) {
+            adminData.addAll(Map<String, dynamic>.from(userData));
+          }
+          if (data is Map) {
+            // Add any missing fields from data
+            data.forEach((key, value) {
+              if (!adminData.containsKey(key)) {
+                adminData[key] = value;
+              }
+            });
+          }
+          
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AdminNavbar(adminData: adminData),
+            ),
+          );
+        } else if (rl.contains('hospital') || rl.contains('health') || rl.contains('org')) {
           // Extract primary healthcare ID from signin response
           String? healthcareId;
 
