@@ -803,7 +803,7 @@ class _AdminApplicantsListPageState extends State<AdminApplicantsListPage> {
         if (mounted) {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'Failed to load applicants';
+            _errorMessage = 'No job applicants found';
           });
         }
       }

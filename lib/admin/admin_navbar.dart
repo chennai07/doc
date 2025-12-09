@@ -107,24 +107,7 @@ class _AdminNavbarState extends State<AdminNavbar> {
                       ],
                     ),
                   ),
-                  // Settings/Profile Icon
-                  IconButton(
-                    onPressed: () {
-                      // TODO: Navigate to admin profile/settings
-                    },
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.settings_outlined,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
+
                 ],
               ),
             ),
