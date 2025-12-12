@@ -109,12 +109,14 @@ class _JobsTabState extends State<JobsTab> {
           final title = (job['jobTitle'] ?? '').toString().toLowerCase();
           final hospital = (job['hospitalName'] ?? '').toString().toLowerCase();
           final department = (job['department'] ?? '').toString().toLowerCase();
-          final location = (job['location'] ?? '').toString().toLowerCase();
+          final state = (job['state'] ?? '').toString().toLowerCase();
+          final district = (job['district'] ?? '').toString().toLowerCase();
 
           final matchesSearch = title.contains(_searchQuery) ||
               hospital.contains(_searchQuery) ||
               department.contains(_searchQuery) ||
-              location.contains(_searchQuery);
+              state.contains(_searchQuery) ||
+              district.contains(_searchQuery);
 
           if (!matchesSearch) return false;
         }
@@ -624,7 +626,21 @@ class _JobsTabState extends State<JobsTab> {
   Widget _buildJobCard(Map<String, dynamic> job) {
     final title = job['jobTitle'] ?? 'Untitled Job';
     final hospital = job['hospitalName'] ?? '';
-    final location = job['location'] ?? '';
+    
+    // Build location from state and district
+    final jobState = (job['state'] ?? '').toString();
+    final jobDistrict = (job['district'] ?? '').toString();
+    String location;
+    if (jobDistrict.isNotEmpty && jobState.isNotEmpty) {
+      location = '$jobDistrict, $jobState';
+    } else if (jobState.isNotEmpty) {
+      location = jobState;
+    } else if (jobDistrict.isNotEmpty) {
+      location = jobDistrict;
+    } else {
+      location = job['location'] ?? ''; // Fallback for old jobs
+    }
+    
     final department = job['department'] ?? '';
     final jobType = job['jobType'] ?? '';
     final status = (job['status'] ?? 'active').toString().toLowerCase();

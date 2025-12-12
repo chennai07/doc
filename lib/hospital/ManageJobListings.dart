@@ -635,7 +635,21 @@ class _ManageJobListingsState extends State<ManageJobListings> {
     final deadline = (job['deadline'] ?? '').toString();
     final status = (job['status'] ?? 'Active').toString();
     final type = (job['jobType'] ?? job['type'] ?? '').toString();
-    final location = (job['location'] ?? '').toString();
+    
+    // Build location from state and district
+    final jobState = (job['state'] ?? '').toString();
+    final jobDistrict = (job['district'] ?? '').toString();
+    String location;
+    if (jobDistrict.isNotEmpty && jobState.isNotEmpty) {
+      location = '$jobDistrict, $jobState';
+    } else if (jobState.isNotEmpty) {
+      location = jobState;
+    } else if (jobDistrict.isNotEmpty) {
+      location = jobDistrict;
+    } else {
+      location = (job['location'] ?? '').toString(); // Fallback for old jobs
+    }
+    
     final createdRaw = (job['createdAt'] ?? job['postedOn'] ?? '').toString();
     final ago = createdRaw.contains('T')
         ? createdRaw.split('T').first

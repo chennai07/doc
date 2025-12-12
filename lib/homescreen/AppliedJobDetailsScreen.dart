@@ -97,7 +97,21 @@ class _AppliedJobDetailsScreenState extends State<AppliedJobDetailsScreen> {
     final job = _jobData;
     final title = job['jobTitle'] ?? job['title'] ?? 'Job Title';
     final postedOn = job['postedOn'] ?? ''; 
-    final location = job['location'] ?? 'Location';
+    
+    // Build location from state and district
+    final jobState = job['state'] ?? '';
+    final jobDistrict = job['district'] ?? '';
+    String location;
+    if (jobDistrict.isNotEmpty && jobState.isNotEmpty) {
+      location = '$jobDistrict, $jobState';
+    } else if (jobState.isNotEmpty) {
+      location = jobState;
+    } else if (jobDistrict.isNotEmpty) {
+      location = jobDistrict;
+    } else {
+      location = job['location'] ?? 'Location'; // Fallback for old jobs
+    }
+    
     final experience = job['minYearsOfExperience'] != null ? '${job['minYearsOfExperience']} Years' : 'Experience';
     final jobType = job['jobType'] ?? 'Full Time';
     final salary = job['salaryRange'] ?? 'Salary';

@@ -490,7 +490,22 @@ class _HospitalProfileState extends State<HospitalProfile> {
     // Extract job data
     final jobTitle = job['jobTitle']?.toString() ?? 'Job Opening';
     final hospitalName = _profileData['hospitalName']?.toString() ?? 'Hospital';
-    final location = job['location']?.toString() ?? _profileData['location']?.toString() ?? 'Location';
+    
+    // Build location from state and district
+    final jobState = (job['state'] ?? '').toString();
+    final jobDistrict = (job['district'] ?? '').toString();
+    String location;
+    if (jobDistrict.isNotEmpty && jobState.isNotEmpty) {
+      location = '$jobDistrict, $jobState';
+    } else if (jobState.isNotEmpty) {
+      location = jobState;
+    } else if (jobDistrict.isNotEmpty) {
+      location = jobDistrict;
+    } else {
+      // Fallback for old jobs: try job location, then hospital location
+      location = job['location']?.toString() ?? _profileData['location']?.toString() ?? 'Location';
+    }
+    
     final aboutRole = job['aboutRole']?.toString() ?? 'No description available';
     final subSpeciality = job['subSpeciality']?.toString() ?? '';
     final employmentType = job['employmentType']?.toString() ?? '';

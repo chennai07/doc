@@ -7,6 +7,7 @@ import 'package:doc/profileprofile/surgeon_form.dart';
 import 'package:doc/widgets/skeleton_loader.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:doc/Navbar.dart';
+import 'package:doc/model/indian_states_districts.dart';
 
 class Applicants extends StatefulWidget {
   final String? healthcareId;
@@ -19,7 +20,6 @@ class Applicants extends StatefulWidget {
 
 class _ApplicantsState extends State<Applicants> {
   final TextEditingController jobTitleCtrl = TextEditingController();
-  final TextEditingController locationCtrl = TextEditingController();
   final TextEditingController aboutCtrl = TextEditingController();
   final TextEditingController responsibilitiesCtrl = TextEditingController();
   final TextEditingController qualificationCtrl = TextEditingController();
@@ -30,6 +30,10 @@ class _ApplicantsState extends State<Applicants> {
   String? _hospitalLogoUrl;
   bool _isProfileLoading = true;
 
+  // State and District for job location
+  String? selectedState;
+  String? selectedDistrict;
+  List<String> districts = [];
 
   final TextEditingController deadlineCtrl = TextEditingController();
 
@@ -241,7 +245,8 @@ class _ApplicantsState extends State<Applicants> {
         'department': department ?? '',
         'subSpeciality': subSpeciality ?? '',
         'jobType': jobType ?? '',
-        'location': locationCtrl.text.trim(),
+        'state': selectedState ?? '',
+        'district': selectedDistrict ?? '',
         'aboutRole': aboutCtrl.text.trim(),
         'keyResponsibilities': responsibilitiesCtrl.text.trim(),
         'preferredQualifications': qualificationCtrl.text.trim(),
@@ -503,15 +508,93 @@ class _ApplicantsState extends State<Applicants> {
             _dropdown(
               value: jobType,
               hint: "Job Type",
-              items: ["Full Time", "Part Time", "Contract"],
+              items: ["Full Time", "Part Time/Locum", "Fee for service"],
               onChanged: (v) => setState(() => jobType = v),
             ),
 
-            _label("Location"),
-            _input(
-              locationCtrl,
-              "Job location",
-              icon: Icons.location_on_outlined,
+            _label("State"),
+            DropdownSearch<String>(
+              popupProps: const PopupProps.menu(
+                showSearchBox: true,
+                searchFieldProps: TextFieldProps(
+                  decoration: InputDecoration(
+                    hintText: "Search State",
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              items: IndianStatesAndDistricts.data.keys.toList(),
+              dropdownDecoratorProps: DropDownDecoratorProps(
+                dropdownSearchDecoration: InputDecoration(
+                  hintText: "Select State",
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 12,
+                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFF4AB3F4)),
+                  ),
+                ),
+              ),
+              selectedItem: selectedState,
+              onChanged: (value) {
+                setState(() {
+                  selectedState = value;
+                  districts = IndianStatesAndDistricts.data[value] ?? [];
+                  selectedDistrict = null; // Reset district when state changes
+                });
+              },
+            ),
+
+            _label("District"),
+            DropdownSearch<String>(
+              popupProps: const PopupProps.menu(
+                showSearchBox: true,
+                searchFieldProps: TextFieldProps(
+                  decoration: InputDecoration(
+                    hintText: "Search District",
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              items: districts,
+              dropdownDecoratorProps: DropDownDecoratorProps(
+                dropdownSearchDecoration: InputDecoration(
+                  hintText: "Select District",
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 12,
+                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFF4AB3F4)),
+                  ),
+                ),
+              ),
+              selectedItem: selectedDistrict,
+              enabled: selectedState != null, // Disable if no state selected
+              onChanged: (value) {
+                setState(() {
+                  selectedDistrict = value;
+                });
+              },
             ),
 
             _label("About the Role"),
@@ -553,7 +636,9 @@ class _ApplicantsState extends State<Applicants> {
                 "60 - 70 LPA",
                 "70 - 80 LPA",
                 "80 - 90 LPA",
-                "90+ LPA"
+                "90+ LPA",
+                "Negotiable",
+                "Not Disclosed"
               ],
               onChanged: (v) => setState(() => salaryRange = v),
             ),

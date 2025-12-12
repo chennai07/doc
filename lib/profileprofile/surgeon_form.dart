@@ -204,7 +204,7 @@ class _SurgeonFormState extends State<SurgeonForm> {
   bool hasProfile = false;
   bool termsAccepted = false;
   List<Map<String, dynamic>> workExperiences = [
-    {"designation": "", "organization": "", "from": "", "to": "", "location": ""}
+    {"designation": "", "organization": "", "from": "", "to": "", "location": "", "tillDate": false}
   ];
   List<List<TextEditingController>> workExpControllers = [];
 
@@ -331,10 +331,11 @@ class _SurgeonFormState extends State<SurgeonForm> {
               'from': m['from']?.toString() ?? '',
               'to': m['to']?.toString() ?? '',
               'location': m['location'] ?? '',
+              'tillDate': m['tillDate'] == true,
             };
           }).toList();
           if (workExperiences.isEmpty) {
-            workExperiences = [{"designation": "", "organization": "", "from": "", "to": "", "location": ""}];
+            workExperiences = [{"designation": "", "organization": "", "from": "", "to": "", "location": "", "tillDate": false}];
           }
         }
       }
@@ -618,9 +619,20 @@ void _initializeWorkExpControllers() {
 }
 
 void addWorkExperience() {
+  // Check if any existing work experience has tillDate enabled
+  final hasTillDate = workExperiences.any((w) => w['tillDate'] == true);
+  if (hasTillDate) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Cannot add new work experience while "Till Date" is enabled for current job'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return;
+  }
   setState(() {
     workExperiences.add(
-        {"designation": "", "organization": "", "from": "", "to": "", "location": ""});
+        {"designation": "", "organization": "", "from": "", "to": "", "location": "", "tillDate": false});
     workExpControllers.add([
       TextEditingController(),
       TextEditingController(),
@@ -647,8 +659,9 @@ void _updateWorkExperienceData() {
       'designation': workExpControllers[i][0].text,
       'healthcareOrganization': workExpControllers[i][1].text,
       'from': workExpControllers[i][2].text,
-      'to': workExpControllers[i][3].text,
+      'to': workExperiences[i]['tillDate'] == true ? '' : workExpControllers[i][3].text,
       'location': workExpControllers[i][4].text,
+      'tillDate': workExperiences[i]['tillDate'] ?? false,
     };
   }
 }
@@ -840,8 +853,8 @@ Widget build(BuildContext context) {
                   style: TextStyle(color: Colors.black54, fontSize: 13),
                 ),
 
-                  titleText("Full Name as per the record"),
-                  TextFormField(controller: fullName, decoration: inputDecoration("Full name as per the record"), validator: (v)=> (v==null||v.isEmpty)?'Required':null),
+                  titleText("Full Name as per the records"),
+                  TextFormField(controller: fullName, decoration: inputDecoration("Full name as per the records"), validator: (v)=> (v==null||v.isEmpty)?'Required':null),
 
                   titleText("Phone number"),
                   TextFormField(controller: phoneNumber, decoration: inputDecoration("Your number"), keyboardType: TextInputType.phone),
@@ -954,7 +967,7 @@ Widget build(BuildContext context) {
                     ),
                   ),
 
-                  titleText("Qualification"),
+                  titleText("Qualification(s)"),
                   TextFormField(controller: degree, decoration: inputDecoration("Your Qualification")),
 
                   titleText("Highest Degree (file)"),
@@ -1119,7 +1132,7 @@ Widget build(BuildContext context) {
                     validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                   ),
 
-                  titleText("Surgical experience (no of cases attended)"),
+                  titleText("Surgical experience (No. of cases performed/assisted)"),
                   DropdownButtonFormField<String>(
                     value: selectedSurgicalExperience,
                     items: expOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
@@ -1185,6 +1198,31 @@ Widget build(BuildContext context) {
                                   },
                                   decoration: inputDecoration("To (Year)"),
                                 )),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // Till Date Checkbox
+                            Row(
+                              children: [
+                                Checkbox(
+                                  value: workExperiences[index]['tillDate'] == true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      workExperiences[index]['tillDate'] = value ?? false;
+                                      if (value == true) {
+                                        // Clear the 'To' year when Till Date is checked
+                                        controllers[3].clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                                const Text(
+                                  "Till Date (Current Job)",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 8),

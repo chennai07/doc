@@ -252,9 +252,10 @@ class _MyJobsPageState extends State<MyJobsPage> {
         final query = _searchQuery.toLowerCase();
         final title = (job['jobTitle']?.toString() ?? '').toLowerCase();
         final dept = (job['department']?.toString() ?? '').toLowerCase();
-        final loc = (job['location']?.toString() ?? '').toLowerCase();
+        final state = (job['state']?.toString() ?? '').toLowerCase();
+        final district = (job['district']?.toString() ?? '').toLowerCase();
         
-        return title.contains(query) || dept.contains(query) || loc.contains(query);
+        return title.contains(query) || dept.contains(query) || state.contains(query) || district.contains(query);
       }
 
       return true;
@@ -594,7 +595,21 @@ class _MyJobsPageState extends State<MyJobsPage> {
     final title = job['jobTitle']?.toString() ?? '';
     final department = job['department']?.toString() ?? '';
     final subSpeciality = job['subSpeciality']?.toString() ?? '';
-    final location = job['location']?.toString() ?? '';
+    
+    // Build location from state and district
+    final jobState = job['state']?.toString() ?? '';
+    final jobDistrict = job['district']?.toString() ?? '';
+    String location;
+    if (jobDistrict.isNotEmpty && jobState.isNotEmpty) {
+      location = '$jobDistrict, $jobState';
+    } else if (jobState.isNotEmpty) {
+      location = jobState;
+    } else if (jobDistrict.isNotEmpty) {
+      location = jobDistrict;
+    } else {
+      location = job['location']?.toString() ?? ''; // Fallback for old jobs
+    }
+    
     final qualifications = job['qualifications']?.toString() ?? '';
     final aboutRole = job['aboutRole']?.toString() ?? '';
     final status = job['status']?.toString() ?? 'Active';
