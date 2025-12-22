@@ -235,6 +235,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 controller: phoneController,
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
+                isRequired: false,
               ),
               _buildField(
                 label: "Email",
@@ -343,6 +344,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     required TextEditingController controller,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
+    bool isRequired = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -357,7 +359,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
             prefixIcon: Icon(icon),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          validator: (value) => value!.isEmpty ? "Please enter $label" : null,
+          validator: isRequired
+              ? (value) => value!.isEmpty ? "Please enter $label" : null
+              : null,
         ),
         const SizedBox(height: 15),
       ],
